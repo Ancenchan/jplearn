@@ -1,0 +1,11 @@
+{
+  "model": "GPT",
+  "version": "v2",
+  "words": [
+    {
+      "word": "広げた",
+      "base": "広げる",
+      "meaning": "展开"
+    }
+  ]
+}

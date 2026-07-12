@@ -27,6 +27,9 @@ export default {
     }
     const url = new URL(request.url);
     try {
+      if (url.pathname === '/api/auth/check' && request.method === 'POST') {
+        return await handleAuthCheck(request);
+      }
       if (url.pathname === '/api/utaten-import' && request.method === 'POST') {
         return await handleUtatenImport(request, env);
       }
@@ -50,8 +53,25 @@ function json(obj, status = 200) {
   });
 }
 
+// ---------- Token验证 ----------
+async function handleAuthCheck(request){
+  const {token}=await request.json();
+  if(!token) return json({ok:false});
+  const res=await fetch('https://api.github.com/user',{headers:{'Authorization':`Bearer ${token}`,'User-Agent':'jplearn'}});
+  return json({ok:res.ok});
+}
+
+async function checkToken(request){
+ const body=await request.clone().json();
+ const token=body.token;
+ if(!token) throw new Error('请先配置GitHub Token');
+ const r=await fetch('https://api.github.com/user',{headers:{'Authorization':`Bearer ${token}`,'User-Agent':'jplearn'}});
+ if(!r.ok) throw new Error('GitHub Token无效');
+}
+
 // ---------- 1. Utaten 抓取 ----------
 async function handleUtatenImport(request, env) {
+  await checkToken(request);
   const { url } = await request.json();
   if (!url || !url.startsWith('https://utaten.com/')) {
     return json({ error: '请提供有效的 Utaten 链接' }, 400);
@@ -175,6 +195,7 @@ async function callAI(apiUrl, apiKey, model, prompt) {
 
 // ---------- 3. 手动创建歌曲 ----------
 async function handleCreateSong(request, env) {
+  await checkToken(request);
   const body = await request.json();
   const { title, artist, lyrics_raw, source, note } = body;
   if (!title || !artist || !Array.isArray(lyrics_raw) || lyrics_raw.length === 0) {

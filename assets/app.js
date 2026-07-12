@@ -8,6 +8,9 @@
 // 例如 "https://jplearn-worker.<your-subdomain>.workers.dev"
 const WORKER_BASE = localStorage.getItem('jplearn_worker_base') || '';
 
+function getGithubToken(){ return localStorage.getItem('jplearn_github_token') || ''; }
+function setGithubToken(v){ localStorage.setItem('jplearn_github_token', v); }
+
 const DATA_BASE = './data';
 
 const state = {
@@ -15,6 +18,74 @@ const state = {
   currentSong: null,    // 当前歌曲详情
   currentAnalysis: null // 当前解析版本
 };
+
+// kuromoji tokenizer instance (loaded from CDN)
+let kuromojiTokenizer = null;
+if (window.kuromoji) {
+  try {
+    window.kuromoji.builder({ dicPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dist/dict/' }).build((err, tokenizer) => {
+      if (!err && tokenizer) {
+        kuromojiTokenizer = tokenizer;
+        // 如果已经有加载中的解析，重新渲染以应用更精确的分词
+        if (state.currentAnalysis) renderLyricsBlock(state.currentAnalysis);
+      }
+    });
+  } catch (e) {
+    console.warn('kuromoji init failed', e);
+  }
+}
+
+function tokenizeTextWithKuromoji(text) {
+  if (!kuromojiTokenizer) return [];
+  try {
+    const toks = kuromojiTokenizer.tokenize(text);
+    return toks.map(t => ({
+      surface: t.surface_form || '',
+      reading: t.reading || t.surface_form || '',
+      base: (t.basic_form && t.basic_form !== '*') ? t.basic_form : (t.surface_form || ''),
+      pos: t.pos || t.pos_detail_1 || ''
+    }));
+  } catch (e) {
+    console.warn('tokenize error', e);
+    return [];
+  }
+}
+
+// 小型本地词典加载与查询（来自 5757词.json）
+let _localDict = null; // map: 词汇 -> entry
+let _localDictPromise = null;
+function loadLocalDict() {
+  if (_localDictPromise) return _localDictPromise;
+  _localDictPromise = fetch('./5757词.json').then(r => {
+    if (!r.ok) throw new Error('字典加载失败');
+    return r.json();
+  }).then(arr => {
+    const m = new Map();
+    arr.forEach(item => {
+      const key = (item['词汇'] || item['词'] || item['surface'] || '').trim();
+      if (!key) return;
+      m.set(key, item);
+      // 也索引读音
+      const yomi = (item['读音'] || item['罗马音'] || '').trim();
+      if (yomi) m.set(yomi, item);
+    });
+    _localDict = m;
+    return m;
+  }).catch(e => { console.warn('loadLocalDict error', e); _localDict = new Map(); return _localDict; });
+  return _localDictPromise;
+}
+
+function findLocalDictEntry(surface) {
+  if (!_localDict) return loadLocalDict().then(() => findLocalDictEntry(surface));
+  const s = (surface || '').trim();
+  if (!s) return null;
+  if (_localDict.has(s)) return _localDict.get(s);
+  // 尝试去掉假名小写、标点等简单归一化
+  const norm = s.replace(/[。、！？，,.!?\s]/g, '');
+  if (_localDict.has(norm)) return _localDict.get(norm);
+  // 尝试片假名/平假名转换未实现——返回 null
+  return null;
+}
 
 // ---------- 工具 ----------
 function $(sel, root = document) { return root.querySelector(sel); }
@@ -69,6 +140,7 @@ function goto(hash) { location.hash = hash; }
 async function renderHome(query = '') {
   const app = $('#app');
   app.innerHTML = `
+    <button class="config-btn" onclick="openGithubTokenDialog()">🔑 GitHub配置</button>
     <div class="brand" onclick="goto('')">
       <div class="brand-mark">歌</div>
       <div class="brand-text">
@@ -88,7 +160,7 @@ async function renderHome(query = '') {
     <div class="section-label">${query ? '搜索结果' : '全部歌曲'}</div>
     <div id="song-list"></div>
     <div class="fab-row">
-      <button class="fab" onclick="goto('import')">＋ 创建新的歌词解析</button>
+      <button class="fab" onclick="goto('import')">＋ 导入新歌词</button>
     </div>
   `;
 
@@ -118,7 +190,7 @@ async function renderSongList(query) {
       return hay.includes(q);
     });
     if (songs.length === 0) {
-      list.innerHTML = `<div class="empty-sub" style="padding:30px 0;">没有找到相关歌曲，去「创建新的歌词解析」导入一首吧</div>`;
+      list.innerHTML = `<div class="empty-sub" style="padding:30px 0;">没有找到歌曲，去「导入新歌词」添加一首吧</div>`;
       return;
     }
     list.innerHTML = songs.map(s => `
@@ -127,7 +199,7 @@ async function renderSongList(query) {
           <div class="song-title">${escapeHtml(s.title)}</div>
           <div class="song-artist">${escapeHtml(s.artist)}</div>
           <div class="song-meta ${s.analysis_count ? '' : 'empty'}">
-            ${s.analysis_count ? `已有解析 · ${s.analysis_count}个版本` : '暂无解析 · 待创建'}
+            ${s.analysis_count ? `解析版本：${s.analysis_count}个` : '暂无解析 · 待创建'}
           </div>
         </div>
         <div class="song-arrow">›</div>
@@ -139,6 +211,70 @@ async function renderSongList(query) {
   } catch (err) {
     list.innerHTML = `<div class="empty-sub" style="padding:30px 0;">加载歌曲列表失败：${err.message}</div>`;
   }
+}
+
+
+// ---------- GitHub Token 配置 ----------
+function openGithubTokenDialog(){
+ const old=getGithubToken();
+ const box=el(`
+ <div class="modal-mask">
+  <div class="modal">
+   <button class="modal-close" onclick="this.closest('.modal-mask').remove()">×</button>
+   <h3>GitHub Token</h3>
+   <p class="empty-sub">用于提交歌词到仓库。Token仅保存在本机浏览器。</p>
+   <input id="github-token-input" type="password" value="${old}" placeholder="ghp_xxx">
+   <div class="modal-actions">
+    <button onclick="this.closest('.modal-mask').remove()">取消</button>
+    <button onclick="saveGithubToken()">确定</button>
+   </div>
+  </div>
+ </div>`);
+ document.body.appendChild(box);
+}
+function saveGithubToken(){
+ const v=document.querySelector('#github-token-input').value.trim();
+ if(!v) return toast('请输入Token');
+ fetch(WORKER_BASE+'/api/auth/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:v})})
+ .then(r=>r.json()).then(d=>{
+  if(!d.ok) return toast('Token验证失败');
+  setGithubToken(v); toast('GitHub Token验证通过'); document.querySelector('.modal-mask').remove();
+ });
+}
+
+// ---------- 导入歌词 ----------
+function renderImport(){
+ $('#app').innerHTML=`
+ <div class="back-row" onclick="goto('')">‹ 返回</div>
+ <div class="section-label">导入新歌词</div>
+ <div class="modal" style="margin:auto">
+  <button class="import-choice" onclick="showManualImport()">✍️ 手动输入歌词</button>
+  <button class="import-choice" onclick="showUtatenImport()">🌐 Utaten链接导入</button>
+ </div>`;
+}
+function showManualImport(){
+ $('#app').innerHTML=`<div class="back-row" onclick="goto('import')">‹ 返回</div>
+ <h2>手动输入歌词</h2>
+ <input id="song-title" placeholder="歌曲名">
+ <textarea id="song-lyrics" placeholder="粘贴歌词"></textarea>
+ <button onclick="submitManualSong()">提交到GitHub</button>`;
+}
+async function submitManualSong(){
+ if(!getGithubToken()) return toast('请先配置GitHub Token');
+ const body={title:$('#song-title').value, lyrics:$('#song-lyrics').value, token:getGithubToken()};
+ const r=await fetch(WORKER_BASE+'/api/songs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,artist:'',lyrics_raw:body.lyrics.split('\n').filter(Boolean)})});
+ toast(r.ok?'提交成功':'提交失败');
+}
+function showUtatenImport(){
+ $('#app').innerHTML=`<div class="back-row" onclick="goto('import')">‹ 返回</div>
+ <h2>Utaten导入</h2>
+ <input id="utaten-url" placeholder="https://utaten.com/...">
+ <button onclick="submitUtaten()">抓取歌词</button>`;
+}
+async function submitUtaten(){
+ const url=$('#utaten-url').value;
+ const r=await fetch(WORKER_BASE+'/api/utaten-import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,token:getGithubToken()})});
+ toast(r.ok?'导入成功':'导入失败');
 }
 
 // ---------- 歌词详情页 ----------
@@ -173,12 +309,55 @@ async function renderSongDetail(songId) {
   }
   state.currentAnalysis = analysis;
 
+  // 兼容：将旧字段映射到新字段，保证前端字段可用
+  analysis.ai_model = analysis.ai_model || analysis.model || analysis.model_name || analysis.aiModel || analysis.version || '';
+  // 确保 sentences 存在，避免 showSentence 时报错
+  analysis.sentences = analysis.sentences || [];
+
+  // 兼容：部分示例数据使用不同结构（例如只有 analysis.words），
+  // 如果缺少 analysis.lines，则根据 song.lyrics 或 analysis.words 回退构造简单的 lines
+  if (!analysis.lines || !Array.isArray(analysis.lines)) {
+    const lines = [];
+    if (song && Array.isArray(song.lyrics) && song.lyrics.length > 0) {
+      // song.lyrics 中可能是 {jp, kana} 的数组
+      song.lyrics.forEach((ln, i) => {
+        const text = ln.jp || ln[0] || '';
+        let tokens = [];
+        // 先按空白拆分
+        tokens = text.split(/\s+/).map(s => s.trim()).filter(Boolean);
+        // 如果只有一个片段，尝试按常见日文标点拆分并保留标点
+        if (tokens.length <= 1) {
+          tokens = text.split(/([、。！？,\.])/u).map(s => s.trim()).filter(Boolean);
+        }
+        // 如果仍然只有一个长片段，按固定宽度切分（每6个字符）以避免整个句子被当作一个词
+        if (tokens.length <= 1 && text.length > 12) {
+          const re = new RegExp('.{1,6}', 'ugu');
+          tokens = text.match(re) || [text];
+        }
+        // 最终回退：至少一个 token
+        if (tokens.length === 0) tokens = [text];
+
+        const words = tokens.map(t => ({ surface: t, reading: ln.kana || t, base: t, pos: '' }));
+        lines.push({ sentence_id: `s${i}`, words });
+      });
+    } else if (analysis.words && Array.isArray(analysis.words)) {
+      // 将扁平的 words 列表每个作为单行
+      analysis.words.forEach((w, i) => {
+        lines.push({ sentence_id: `s${i}`, words: [{ surface: w.word || w.surface || '', reading: w.reading || '', base: w.base || '', pos: w.pos || '' }] });
+      });
+    }
+    if (lines.length > 0) analysis.lines = lines;
+  }
+
   app.innerHTML = `
     <div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div>
     <div class="song-head">
       <div class="title">${escapeHtml(song.title)}</div>
       <div class="artist">${escapeHtml(song.artist)}</div>
       <div class="version-tag">🍡 ${escapeHtml(analysis.ai_model)}解析版 · ${song.analysis_versions.length}个版本</div>
+      <div class="version-list">
+        ${song.analysis_versions.map((v,i)=>`<button class="version-btn ${v===latestVersion?'active':''}" data-version="${escapeHtml(v)}">版本${i+1}</button>`).join('')}
+      </div>
     </div>
     <button class="parse-btn" id="reparse-btn">✨ 用新版本重新解析</button>
     <div class="section-label">歌词</div>
@@ -194,10 +373,46 @@ async function renderSongDetail(songId) {
   renderLyricsBlock(analysis);
 
   $('#reparse-btn').addEventListener('click', () => startParse(song, { rerun: true }));
+  app.querySelectorAll('.version-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const v = btn.dataset.version;
+      try {
+        const a = await fetchJSON(`${DATA_BASE}/analysis/${songId}/${v}.json`);
+        state.currentAnalysis = a;
+        renderLyricsBlock(a);
+        app.querySelectorAll('.version-btn').forEach(x => x.classList.toggle('active', x === btn));
+        toast(`已切换到版本${Array.from(app.querySelectorAll('.version-btn')).indexOf(btn)+1}`);
+      } catch(e) {
+        toast('版本加载失败：'+e.message);
+      }
+    });
+  });
 }
 
 function renderLyricsBlock(analysis) {
   const block = $('#lyrics-block');
+  // 使用 kuromoji 进行更智能的分词：当行中只有一个长片段或内部词很长时触发分词。
+  if (Array.isArray(analysis.lines)) {
+    analysis.lines.forEach(line => {
+      const originalWords = Array.isArray(line.words) ? line.words : [];
+      const combined = originalWords.map(w => w.surface || w.word || '').join('');
+      let shouldTokenize = false;
+      if (kuromojiTokenizer && combined && combined.length > 1) {
+        if (originalWords.length <= 1) {
+          shouldTokenize = true;
+        } else if (originalWords.some(w => (w.surface || '').length > 10)) {
+          shouldTokenize = true;
+        }
+      }
+      if (shouldTokenize && kuromojiTokenizer) {
+        const toks = tokenizeTextWithKuromoji(combined);
+        if (toks && toks.length > 0) {
+          line.words = toks;
+        }
+      }
+    });
+  }
+
   block.innerHTML = analysis.lines.map((line, idx) => `
     <div class="lyric-line">
       <div class="lyric-jp" data-line="${idx}">${buildRubyMarkup(line)}</div>
@@ -238,13 +453,33 @@ function showWordPop(word) {
         <div class="word-pop-yomi">${escapeHtml(word.reading)}</div>
       </div>
       <div class="pop-grid">
-        <div class="k">原形</div><div>${escapeHtml(word.base)}</div>
-        <div class="k">词性</div><div><span class="pop-tag">${escapeHtml(word.pos)}</span></div>
-        <div class="k">释义</div><div>${escapeHtml(word.meaning || '')}</div>
+        <div class="k">原形</div><div class="base-slot">${escapeHtml(word.base)}</div>
+        <div class="k">词性</div><div><span class="pop-tag pos-slot">${escapeHtml(word.pos)}</span></div>
+        <div class="k">释义</div><div class="meaning-slot">${escapeHtml(word.meaning || '')}</div>
       </div>
       ${word.chain ? `<div class="pop-chain">变化过程 &nbsp;<b>${escapeHtml(word.chain)}</b>${word.conjugation ? `（${escapeHtml(word.conjugation)}）` : ''}</div>` : ''}
     </div>
   `;
+
+  // 异步填充词典释义（如果本地字典可用且当前没有释义）
+  if (!word.meaning) {
+    Promise.resolve(findLocalDictEntry(word.base || word.surface || word.reading)).then(entry => {
+      if (!entry) return;
+      const defs = [];
+      for (let i = 1; i <= 10; i++) {
+        const key = `释义${i}`;
+        if (entry[key]) defs.push(String(entry[key]).replace(/@/g, ' '));
+      }
+      const meaningText = defs.join(' / ');
+      const meaningEl = slot.querySelector('.meaning-slot');
+      if (meaningEl) meaningEl.textContent = meaningText;
+      const baseEl = slot.querySelector('.base-slot');
+      if (baseEl && (!word.base || word.base === '')) baseEl.textContent = entry['辞書形'] || '';
+      const posEl = slot.querySelector('.pos-slot');
+      if (posEl && (!word.pos || word.pos === '')) posEl.textContent = entry['词性'] || '';
+    }).catch(e => console.warn('dict lookup err', e));
+  }
+
   slot.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -420,7 +655,10 @@ function openApiConfigDialog(onSaved) {
   const cfg = getApiConfig();
   const wrap = el(`
     <div class="word-pop" style="position:fixed;left:16px;right:16px;bottom:16px;max-width:448px;margin:0 auto;z-index:200;">
-      <div class="section-label" style="margin-top:6px;">配置 AI API（仅保存在本机浏览器）</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="section-label" style="margin-top:6px;">配置 AI API（仅保存在本机浏览器）</div>
+        <button type="button" id="cfg-close" style="border:0;background:none;font-size:20px;cursor:pointer;">×</button>
+      </div>
       <div class="field"><label>API 地址</label><input id="cfg-url" value="${escapeHtml(cfg.apiUrl)}" placeholder="https://api.openai.com/v1/chat/completions"></div>
       <div class="field"><label>API Key</label><input id="cfg-key" type="password" value="${escapeHtml(cfg.apiKey)}"></div>
       <div class="field"><label>模型名称</label><input id="cfg-model" value="${escapeHtml(cfg.model)}" placeholder="例如 gpt-4o / deepseek-chat"></div>
@@ -428,6 +666,7 @@ function openApiConfigDialog(onSaved) {
     </div>
   `);
   document.body.appendChild(wrap);
+  $('#cfg-close', wrap).addEventListener('click', () => wrap.remove());
   $('#cfg-save', wrap).addEventListener('click', () => {
     setApiConfig({
       apiUrl: $('#cfg-url', wrap).value.trim(),

@@ -64,3 +64,11 @@ jplearn/
 - **歌曲/解析的增删改查后台**（PRD 模块三 3.2/3.3）还没做界面，目前只有「新增」。
 
 有了实际的 Worker 地址和一两条真实解析数据之后，可以再一起过一遍效果，把上面这几个 TODO 排个优先级。
+
+
+## Utaten导入流程
+1. 前端提交Utaten URL到 Worker `/api/utaten-import`。
+2. Worker验证GitHub Token。
+3. Worker fetch Utaten页面并解析歌词区域。
+4. 生成 data/songs/*.json。
+5. 调用GitHub Contents API提交仓库。

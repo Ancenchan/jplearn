@@ -1,11 +1,23 @@
 {
   "songs": [
     {
-      "id": "song001",
+      "id": "sample_001",
       "title": "千本桜",
-      "artist": "初音ミク・黒うさP",
-      "aliases": ["千本樱", "Senbonzakura"],
-      "analysis_count": 1
+      "artist": "黒うさP",
+      "analysis_count": 2,
+      "analysis_versions": [
+        "v1",
+        "v2"
+      ]
+    },
+    {
+      "id": "sample_002",
+      "title": "Lemon",
+      "artist": "米津玄師",
+      "analysis_count": 1,
+      "analysis_versions": [
+        "v1"
+      ]
     }
   ]
 }
