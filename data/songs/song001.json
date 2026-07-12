@@ -1,0 +1,14 @@
+{
+  "id": "song001",
+  "title": "千本桜",
+  "artist": "初音ミク・黒うさP",
+  "aliases": ["千本樱", "Senbonzakura"],
+  "source": "manual",
+  "created_at": "2026-07-12T10:00:00+08:00",
+  "lyrics_raw": [
+    "夢を探してた",
+    "広げた戒和洋世界",
+    "会いたくて声にすれば"
+  ],
+  "analysis_versions": ["song001_20260712103055"]
+}
