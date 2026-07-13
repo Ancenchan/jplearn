@@ -1,0 +1,22 @@
+{
+  "sentences": [
+    {
+      "id": "sentence1",
+      "line_indices": [0],
+      "text_jp": "君を探してた あの日の夢を",
+      "translation_cn": "寻找着你，寻找着那一天的梦想"
+    },
+    {
+      "id": "sentence2",
+      "line_indices": [1],
+      "text_jp": "広げた戒和洋世界",
+      "translation_cn": "展开了这戒律交织、和洋并存的世界"
+    },
+    {
+      "id": "sentence3",
+      "line_indices": [2],
+      "text_jp": "会いたくて声にすれば",
+      "translation_cn": "如果想见你就把它化作声音喊出来"
+    }
+  ]
+}

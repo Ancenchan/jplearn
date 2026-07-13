@@ -1,0 +1,16 @@
+{
+  "sentences": [
+    {
+      "id": "sentence1",
+      "line_indices": [0],
+      "text_jp": "夏の終わりの ひかりの中",
+      "translation_cn": "在夏天结束的光芒之中"
+    },
+    {
+      "id": "sentence2",
+      "line_indices": [1],
+      "text_jp": "君の笑う声が まだ胸に残る",
+      "translation_cn": "你笑着的声音仍留在胸口"
+    }
+  ]
+}

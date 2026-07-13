@@ -1,0 +1,16 @@
+{
+  "sentences": [
+    {
+      "id": "sentence1",
+      "line_indices": [0],
+      "text_jp": "運命を照らす",
+      "translation_cn": "照亮命运"
+    },
+    {
+      "id": "sentence2",
+      "line_indices": [1],
+      "text_jp": "その闇を越えて",
+      "translation_cn": "跨越那片黑暗"
+    }
+  ]
+}

@@ -1,23 +1,25 @@
 {
   "songs": [
     {
-      "id": "sample_001",
+      "id": "song001",
       "title": "千本桜",
-      "artist": "黒うさP",
-      "analysis_count": 2,
-      "analysis_versions": [
-        "v1",
-        "v2"
-      ]
+      "artist": "初音ミク・黒うさP",
+      "aliases": ["千本樱", "Senbonzakura"],
+      "analysis_count": 1
     },
     {
-      "id": "sample_002",
-      "title": "Lemon",
-      "artist": "米津玄師",
-      "analysis_count": 1,
-      "analysis_versions": [
-        "v1"
-      ]
+      "id": "song002",
+      "title": "打上花火",
+      "artist": "DAOKO × 米津玄師",
+      "aliases": ["打上花火", "Uchiage Hanabi"],
+      "analysis_count": 1
+    },
+    {
+      "id": "song003",
+      "title": "紅蓮華",
+      "artist": "LiSA",
+      "aliases": ["紅蓮華", "Crimson Lotus"],
+      "analysis_count": 1
     }
   ]
 }

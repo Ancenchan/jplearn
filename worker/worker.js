@@ -27,9 +27,6 @@ export default {
     }
     const url = new URL(request.url);
     try {
-      if (url.pathname === '/api/auth/check' && request.method === 'POST') {
-        return await handleAuthCheck(request);
-      }
       if (url.pathname === '/api/utaten-import' && request.method === 'POST') {
         return await handleUtatenImport(request, env);
       }
@@ -53,25 +50,8 @@ function json(obj, status = 200) {
   });
 }
 
-// ---------- Token验证 ----------
-async function handleAuthCheck(request){
-  const {token}=await request.json();
-  if(!token) return json({ok:false});
-  const res=await fetch('https://api.github.com/user',{headers:{'Authorization':`Bearer ${token}`,'User-Agent':'jplearn'}});
-  return json({ok:res.ok});
-}
-
-async function checkToken(request){
- const body=await request.clone().json();
- const token=body.token;
- if(!token) throw new Error('请先配置GitHub Token');
- const r=await fetch('https://api.github.com/user',{headers:{'Authorization':`Bearer ${token}`,'User-Agent':'jplearn'}});
- if(!r.ok) throw new Error('GitHub Token无效');
-}
-
 // ---------- 1. Utaten 抓取 ----------
 async function handleUtatenImport(request, env) {
-  await checkToken(request);
   const { url } = await request.json();
   if (!url || !url.startsWith('https://utaten.com/')) {
     return json({ error: '请提供有效的 Utaten 链接' }, 400);
@@ -135,7 +115,13 @@ async function handleParse(request, env) {
   }
 
   const versionId = `${song_id}_${timestamp()}`;
-  const analysisDoc = {
+  const manifestPath = `data/analysis/${song_id}/${versionId}.json`;
+  const linesPath = `data/analysis/${song_id}/${versionId}.lines.json`;
+  const sentencesPath = `data/analysis/${song_id}/${versionId}.sentences.json`;
+
+  const linesDoc = { lines: parsed.lines || [] };
+  const sentencesDoc = { sentences: parsed.sentences || [] };
+  const manifestDoc = {
     id: versionId,
     song_id,
     created_at: new Date().toISOString(),
@@ -143,12 +129,15 @@ async function handleParse(request, env) {
     ai_model: model,
     status: 'completed',
     lyrics_snapshot: lyrics,
-    sentences: parsed.sentences,
-    lines: parsed.lines
+    parts: {
+      lines: `${versionId}.lines.json`,
+      sentences: `${versionId}.sentences.json`
+    }
   };
 
-  await githubPutJSON(env, `data/analysis/${song_id}/${versionId}.json`, analysisDoc,
-    `解析: ${song_id} (${model})`);
+  await githubPutJSON(env, linesPath, linesDoc, `解析行级结果: ${song_id} (${model})`);
+  await githubPutJSON(env, sentencesPath, sentencesDoc, `解析句子结果: ${song_id} (${model})`);
+  await githubPutJSON(env, manifestPath, manifestDoc, `解析: ${song_id} (${model})`);
   await appendAnalysisVersion(env, song_id, versionId);
   await bumpIndexCount(env, song_id);
 
@@ -195,7 +184,6 @@ async function callAI(apiUrl, apiKey, model, prompt) {
 
 // ---------- 3. 手动创建歌曲 ----------
 async function handleCreateSong(request, env) {
-  await checkToken(request);
   const body = await request.json();
   const { title, artist, lyrics_raw, source, note } = body;
   if (!title || !artist || !Array.isArray(lyrics_raw) || lyrics_raw.length === 0) {

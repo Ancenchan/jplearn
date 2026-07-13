@@ -1,0 +1,13 @@
+{
+  "id": "song003",
+  "title": "紅蓮華",
+  "artist": "LiSA",
+  "aliases": ["紅蓮華", "Crimson Lotus"],
+  "source": "manual",
+  "created_at": "2026-07-14T09:30:00+08:00",
+  "lyrics_raw": [
+    "運命を照らす",
+    "その闇を越えて"
+  ],
+  "analysis_versions": ["song003_20260714093000"]
+}

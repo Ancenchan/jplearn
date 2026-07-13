@@ -1,0 +1,27 @@
+{
+  "lines": [
+    {
+      "index": 0,
+      "text": "運命を照らす",
+      "sentence_id": "sentence1",
+      "translation_cn": "照亮命运",
+      "words": [
+        { "surface": "運命", "reading": "うんめい", "base": "運命", "pos": "名词", "meaning": "命运" },
+        { "surface": "を", "reading": "を", "base": "を", "pos": "助词", "meaning": "宾格助词" },
+        { "surface": "照らす", "reading": "てらす", "base": "照らす", "pos": "五段动词", "meaning": "照亮" }
+      ]
+    },
+    {
+      "index": 1,
+      "text": "その闇を越えて",
+      "sentence_id": "sentence2",
+      "translation_cn": "跨越那片黑暗",
+      "words": [
+        { "surface": "その", "reading": "その", "base": "その", "pos": "连体词", "meaning": "那" },
+        { "surface": "闇", "reading": "やみ", "base": "闇", "pos": "名词", "meaning": "黑暗" },
+        { "surface": "を", "reading": "を", "base": "を", "pos": "助词", "meaning": "宾格助词" },
+        { "surface": "越えて", "reading": "こえて", "base": "越える", "pos": "一段动词", "meaning": "跨越" }
+      ]
+    }
+  ]
+}

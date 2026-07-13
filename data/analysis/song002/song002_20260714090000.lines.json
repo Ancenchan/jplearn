@@ -1,0 +1,26 @@
+{
+  "lines": [
+    {
+      "index": 0,
+      "text": "夏の終わりの ひかりの中",
+      "sentence_id": "sentence1",
+      "translation_cn": "在夏天结束的光芒之中",
+      "words": [
+        { "surface": "夏", "reading": "なつ", "base": "夏", "pos": "名词", "meaning": "夏天" },
+        { "surface": "の", "reading": "の", "base": "の", "pos": "助词", "meaning": "连接词" },
+        { "surface": "終わり", "reading": "おわり", "base": "終わり", "pos": "名词", "meaning": "结束" }
+      ]
+    },
+    {
+      "index": 1,
+      "text": "君の笑う声が まだ胸に残る",
+      "sentence_id": "sentence2",
+      "translation_cn": "你笑着的声音仍留在胸口",
+      "words": [
+        { "surface": "君", "reading": "きみ", "base": "君", "pos": "名词", "meaning": "你" },
+        { "surface": "の", "reading": "の", "base": "の", "pos": "助词", "meaning": "连接词" },
+        { "surface": "残る", "reading": "のこる", "base": "残る", "pos": "五段动词", "meaning": "残留" }
+      ]
+    }
+  ]
+}
