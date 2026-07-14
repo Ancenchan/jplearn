@@ -6,9 +6,20 @@
 
 // TODO: 部署 Worker 后，把这里换成你的 Worker 地址
 // 例如 "https://jplearn-worker.<your-subdomain>.workers.dev"
-const WORKER_BASE = localStorage.getItem('jplearn_worker_base') || '';
-
 const DATA_BASE = './data';
+
+function getWorkerBase() {
+  const stored = (localStorage.getItem('jplearn_worker_base') || '').trim();
+  return stored || 'https://jplearn-worker.ancenchan.workers.dev';
+}
+function setWorkerBase(url) {
+  const trimmed = (url || '').trim();
+  if (trimmed) {
+    localStorage.setItem('jplearn_worker_base', trimmed);
+  } else {
+    localStorage.removeItem('jplearn_worker_base');
+  }
+}
 
 const state = {
   index: null,          // data/index.json 缓存
@@ -402,13 +413,14 @@ async function submitManualImport() {
     toast('请填写歌曲名称、歌手和歌词');
     return;
   }
-  if (!WORKER_BASE) {
-    toast('还没有配置 Worker 地址，暂时无法写入公共库（见下方说明）');
+  const workerBase = getWorkerBase();
+  if (!workerBase) {
+    toast('还没有配置 Worker 地址，暂时无法写入公共库（见设置按钮）');
     console.log('待写入歌曲预览：', { title, artist, lyricsRaw });
     return;
   }
   try {
-    const res = await fetch(`${WORKER_BASE}/api/songs`, {
+    const res = await fetch(`${workerBase}/api/songs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -430,9 +442,10 @@ async function submitManualImport() {
 async function submitUtatenImport() {
   const url = $('#f-url').value.trim();
   if (!url) { toast('请输入 Utaten 链接'); return; }
-  if (!WORKER_BASE) { toast('还没有配置 Worker 地址，暂时无法抓取'); return; }
+  const workerBase = getWorkerBase();
+  if (!workerBase) { toast('还没有配置 Worker 地址，暂时无法抓取'); return; }
   try {
-    const res = await fetch(`${WORKER_BASE}/api/utaten-import`, {
+    const res = await fetch(`${workerBase}/api/utaten-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, github_token: getGitHubToken() })
@@ -453,14 +466,15 @@ async function startParse(song, { rerun }) {
     openApiConfigDialog(() => startParse(song, { rerun }));
     return;
   }
-  if (!WORKER_BASE) {
-    toast('还没有配置 Worker 地址，暂时无法调用AI解析（见页面底部说明）');
+  const workerBase = getWorkerBase();
+  if (!workerBase) {
+    toast('还没有配置 Worker 地址，暂时无法调用AI解析（见设置按钮）');
     return;
   }
   const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
   if (btn) { btn.disabled = true; btn.textContent = '正在分析歌词结构… 30%'; }
   try {
-    const res = await fetch(`${WORKER_BASE}/api/parse`, {
+    const res = await fetch(`${workerBase}/api/parse`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -517,16 +531,18 @@ function openApiConfigDialog(onSaved) {
 
 function openSettingsDialog() {
   const token = getGitHubToken();
+  const workerBase = getWorkerBase();
   const wrap = el(`
     <div class="word-pop" style="position:fixed;left:16px;right:16px;bottom:16px;max-width:448px;margin:0 auto;z-index:250;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;">
-        <div class="section-label" style="margin-top:0;">GitHub Token 配置</div>
+        <div class="section-label" style="margin-top:0;">配置</div>
         <button type="button" id="settings-close" aria-label="关闭" style="border:0;background:transparent;color:#8b7fa6;font-size:20px;cursor:pointer;line-height:1;">×</button>
       </div>
+      <div class="field"><label>Worker 地址</label><input id="settings-worker" value="${escapeHtml(workerBase)}" placeholder="https://jplearn-worker.xxx.workers.dev"></div>
       <div class="field"><label>GitHub Token</label><input id="settings-token" type="password" value="${escapeHtml(token)}" placeholder="ghp_xxx"></div>
-      <div class="empty-sub" style="margin-top:-6px;">用于写入数据前的鉴权校验和实际请求发送。Token 仅保存在本机浏览器。</div>
+      <div class="empty-sub" style="margin-top:-6px;">Worker 地址用于调用导入 / 解析接口；Token 用于写入数据前的鉴权校验。两项都仅保存在本机浏览器。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="parse-btn" id="settings-save">验证并保存</button>
+        <button class="parse-btn" id="settings-save">保存并验证</button>
         <button type="button" id="settings-clear" style="padding:12px 14px;border:none;border-radius:999px;background:#f3eef8;color:#625874;cursor:pointer;">清空</button>
       </div>
     </div>
@@ -536,19 +552,27 @@ function openSettingsDialog() {
   const closeDialog = () => wrap.remove();
   $('#settings-close', wrap).addEventListener('click', closeDialog);
   $('#settings-clear', wrap).addEventListener('click', () => {
+    setWorkerBase('');
     setGitHubToken('');
-    toast('GitHub Token 已清空');
+    toast('已清空 Worker 地址和 GitHub Token');
     closeDialog();
   });
   $('#settings-save', wrap).addEventListener('click', async () => {
+    const workerValue = $('#settings-worker', wrap).value.trim();
     const tokenValue = $('#settings-token', wrap).value.trim();
-    const result = await validateGitHubToken(tokenValue);
-    if (!result.ok) {
-      toast(result.message);
-      return;
+    setWorkerBase(workerValue);
+    if (tokenValue) {
+      const result = await validateGitHubToken(tokenValue);
+      if (!result.ok) {
+        toast(result.message);
+        return;
+      }
+      setGitHubToken(tokenValue);
+      toast(`已保存 Worker 地址并验证 GitHub Token（${result.login}）`);
+    } else {
+      setGitHubToken('');
+      toast('已保存 Worker 地址；未填写 GitHub Token');
     }
-    setGitHubToken(tokenValue);
-    toast(`已验证并保存 GitHub Token（${result.login}）`);
     closeDialog();
   });
 }
