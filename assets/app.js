@@ -450,7 +450,7 @@ async function submitUtatenImport() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, github_token: getGitHubToken() })
     });
-    if (!res.ok) throw new Error('歌词获取失败，请手动输入歌词');
+    if (!res.ok) throw new Error(await readErrorMessage(res, '歌词获取失败，请手动输入歌词'));
     const { id } = await res.json();
     toast('抓取成功，歌词记录已创建');
     goto(`song/${id}`);
@@ -575,6 +575,19 @@ function openSettingsDialog() {
     }
     closeDialog();
   });
+}
+
+async function readErrorMessage(res, fallback) {
+  try {
+    const data = await res.json();
+    return data?.error || fallback;
+  } catch {
+    try {
+      return await res.text() || fallback;
+    } catch {
+      return fallback;
+    }
+  }
 }
 
 function escapeHtml(str) {
