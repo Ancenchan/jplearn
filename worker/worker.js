@@ -58,23 +58,31 @@ async function handleUtatenImport(request, env) {
   }
 
   let html;
+  let status = 0;
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!res.ok) throw new Error('抓取失败');
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; jplearn/1.0; +https://github.com/Ancenchan/jplearn)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ja,en-US;q=0.8,en;q=0.6'
+      }
+    });
+    status = res.status;
+    if (!res.ok) {
+      return json({ error: `Utaten 页面请求失败（HTTP ${status}），请确认链接是否为歌词页，或改用手动输入。` }, 502);
+    }
     html = await res.text();
-  } catch {
-    return json({ error: '歌词获取失败，请手动输入歌词' }, 502);
+  } catch (err) {
+    return json({ error: `Utaten 页面请求失败：${err.message || '网络异常'}，请稍后重试或改用手动输入。` }, 502);
   }
 
-  // TODO: Utaten 的页面结构可能会变，这里只是一个占位提取逻辑，
-  // 上线前请对照实际 HTML 结构调整选择器（歌词一般在 <p class="hiragana"> 或类似容器里）。
   const lyricsRaw = extractUtatenLyrics(html);
-  const titleMatch = html.match(/<title>(.*?)<\/title>/);
+  const titleMatch = html.match(/<title>(.*?)<\/title>/i);
   if (!lyricsRaw.length) {
-    return json({ error: '歌词获取失败，请手动输入歌词' }, 502);
+    return json({ error: '已取得 Utaten 页面，但未识别到歌词正文。页面结构可能已变化，请改用手动输入或更新抓取规则。' }, 502);
   }
 
-  const title = titleMatch ? titleMatch[1].split('/')[0].trim() : '未命名歌曲';
+  const title = titleMatch ? decodeHtml(titleMatch[1]).split('/')[0].trim() : '未命名歌曲';
   const songId = await createSongRecord(env, {
     title, artist: '', lyrics_raw: lyricsRaw, source: url, note: 'Utaten自动导入'
   });
@@ -82,15 +90,76 @@ async function handleUtatenImport(request, env) {
 }
 
 function extractUtatenLyrics(html) {
-  // 占位实现：真实项目里建议用 HTMLRewriter 精确定位歌词容器
-  const match = html.match(/<div[^>]*class="[^"]*lyricBody[^"]*"[^>]*>([\s\S]*?)<\/div>/);
-  if (!match) return [];
-  return match[1]
-    .replace(/<br\s*\/?>/g, '\n')
+  const containers = [
+    extractByClass(html, 'hiragana'),
+    extractByClass(html, 'lyricBody'),
+    extractByClass(html, 'lyricsBody'),
+    extractByClass(html, 'lyric-body'),
+    extractByClass(html, 'romaji')
+  ].filter(Boolean);
+
+  for (const container of containers) {
+    const lines = normalizeLyricsHtml(container);
+    if (lines.length) return lines;
+  }
+
+  return [];
+}
+
+function extractByClass(html, className) {
+  const safeClassName = escapeRegExp(className);
+  const tagPattern = new RegExp(String.raw`<([a-zA-Z][\w:-]*)[^>]*class=["'][^"']*${safeClassName}[^"']*["'][^>]*>`, 'i');
+  const match = tagPattern.exec(html);
+  if (!match) return '';
+
+  const tag = match[1].toLowerCase();
+  let depth = 1;
+  let cursor = match.index + match[0].length;
+  const tagBoundary = new RegExp(String.raw`</?${tag}\b[^>]*>`, 'gi');
+  tagBoundary.lastIndex = cursor;
+
+  while (depth > 0) {
+    const boundary = tagBoundary.exec(html);
+    if (!boundary) return html.slice(cursor);
+    if (boundary[0][1] === '/') depth -= 1;
+    else depth += 1;
+    if (depth === 0) return html.slice(cursor, boundary.index);
+  }
+
+  return '';
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeLyricsHtml(fragment) {
+  return fragment
+    .replace(/<rt[\s\S]*?<\/rt>/gi, '')
+    .replace(/<rp[\s\S]*?<\/rp>/gi, '')
+    .replace(/<ruby[^>]*>/gi, '')
+    .replace(/<\/ruby>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li)>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .split('\n')
-    .map(l => l.trim())
-    .filter(Boolean);
+    .map(line => decodeHtml(line).replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .filter(line => !/^この歌詞|^無料歌詞検索|^歌詞の位置/.test(line));
+}
+
+function decodeHtml(text) {
+  const named = {
+    amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' '
+  };
+  return String(text || '').replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (_, entity) => {
+    if (entity[0] === '#') {
+      const radix = entity[1]?.toLowerCase() === 'x' ? 16 : 10;
+      const value = parseInt(entity.replace(/^#x?/i, ''), radix);
+      return Number.isFinite(value) ? String.fromCodePoint(value) : _;
+    }
+    return Object.prototype.hasOwnProperty.call(named, entity) ? named[entity] : _;
+  });
 }
 
 // ---------- 2. AI 全文解析 ----------
