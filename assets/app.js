@@ -4,7 +4,7 @@
 // 写操作（导入歌曲 / AI解析 / 保存回GitHub）都会转发给 Cloudflare Worker
 // ============================================================
 
-// TODO: 部署 Worker 后，把这里换成你的 Worker 地址
+// TODO: 部署 Worker 后，把这里换成你的 Worker 
 // 例如 "https://jplearn-worker.<your-subdomain>.workers.dev"
 const DATA_BASE = './data';
 
