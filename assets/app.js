@@ -26,6 +26,9 @@ const state = {
   currentSong: null,    // 当前歌曲详情
   currentAnalysis: null // 当前解析版本
 };
+const PENDING_SONG_PREFIX = 'jplearn_pending_song_';
+const VOCABULARY_PATH = './5757词.json';
+let localVocabulary = null;
 
 // ---------- 工具 ----------
 function $(sel, root = document) { return root.querySelector(sel); }
@@ -38,6 +41,35 @@ function toast(msg) {
   const node = el(`<div class="toast">${msg}</div>`);
   document.body.appendChild(node);
   setTimeout(() => node.remove(), 2400);
+}
+function rememberPendingSong(song) {
+  if (!song?.id) return;
+  sessionStorage.setItem(`${PENDING_SONG_PREFIX}${song.id}`, JSON.stringify({ song, savedAt: Date.now() }));
+}
+function getPendingSong(songId) {
+  try {
+    const raw = sessionStorage.getItem(`${PENDING_SONG_PREFIX}${songId}`);
+    if (!raw) return null;
+    const { song, savedAt } = JSON.parse(raw);
+    if (!song?.id || Date.now() - Number(savedAt || 0) > 10 * 60 * 1000) {
+      sessionStorage.removeItem(`${PENDING_SONG_PREFIX}${songId}`);
+      return null;
+    }
+    return song;
+  } catch {
+    sessionStorage.removeItem(`${PENDING_SONG_PREFIX}${songId}`);
+    return null;
+  }
+}
+function clearPendingSong(songId) {
+  sessionStorage.removeItem(`${PENDING_SONG_PREFIX}${songId}`);
+}
+async function loadLocalVocabulary() {
+  if (localVocabulary) return localVocabulary;
+  const entries = await fetchJSON(VOCABULARY_PATH);
+  if (!Array.isArray(entries)) throw new Error('词典文件格式不正确');
+  localVocabulary = window.JpLearnVocab.buildIndex(entries);
+  return localVocabulary;
 }
 async function fetchJSON(path) {
   const res = await fetch(path, { cache: 'no-cache' });
@@ -228,9 +260,16 @@ async function renderSongDetail(songId) {
     if (!state.index) state.index = await fetchJSON(`${DATA_BASE}/index.json`);
     indexEntry = state.index.songs.find(s => s.id === songId);
   } catch (err) {
-    app.innerHTML = `<div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div><div class="empty-sub" style="padding:40px 0;text-align:center;">找不到这首歌：${err.message}</div>`;
-    return;
+    const pendingSong = getPendingSong(songId);
+    if (!pendingSong) {
+      app.innerHTML = `<div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div><div class="empty-sub" style="padding:40px 0;text-align:center;">找不到这首歌：${err.message}</div>`;
+      return;
+    }
+    song = pendingSong;
+    indexEntry = null;
+    toast('歌词已创建，GitHub Pages 同步稍有延迟，先显示刚导入的内容');
   }
+  if (songId === song.id && indexEntry) clearPendingSong(songId);
   state.currentSong = song;
 
   const hasAnalysis = song.analysis_versions && song.analysis_versions.length > 0;
@@ -270,6 +309,76 @@ async function renderSongDetail(songId) {
   renderLyricsBlock(analysis);
 
   $('#reparse-btn').addEventListener('click', () => startParse(song, { rerun: true }));
+}
+
+function renderRawLyricsBlock(lines) {
+  return (lines || []).map((line, idx) => `
+    <div class="lyric-line">
+      <div class="lyric-jp" data-line="${idx}">${escapeHtml(line)}</div>
+    </div>
+  `).join('');
+}
+
+function renderTokenizedLyricsBlock(lines, tokensByLine) {
+  return (lines || []).map((line, lineIndex) => `
+    <div class="lyric-line">
+      <div class="lyric-jp local-token-line" data-line="${lineIndex}">
+        ${(tokensByLine[lineIndex] || []).map((token, tokenIndex) => token.matched
+          ? `<button type="button" class="local-token matched" data-token="${tokenIndex}">${escapeHtml(token.text)}</button>`
+          : `<button type="button" class="local-token" data-token="${tokenIndex}">${escapeHtml(token.text)}</button>`
+        ).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function showLocalWordPop(query, matches) {
+  const slot = $('#word-pop-slot');
+  if (!matches.length) {
+    slot.innerHTML = `<div class="word-pop"><div class="pop-empty">「${escapeHtml(query)}」在本地 5757 词词典中没有找到匹配。可以点击相邻片段，或使用 AI 解析获得更完整的分词结果。</div></div>`;
+    return;
+  }
+  const primary = matches[0];
+  const entry = primary.entry;
+  const definition = window.JpLearnVocab.meanings(entry).join('；') || '词典暂无释义';
+  slot.innerHTML = `
+    <div class="word-pop">
+      <div class="word-pop-head"><div class="word-pop-jp">${escapeHtml(entry['词汇'])}</div><div class="word-pop-yomi">${escapeHtml(entry['读音'] || '')}</div></div>
+      <div class="pop-grid">
+        <div class="k">匹配</div><div>${escapeHtml(primary.kind)}${primary.kind === '活用形' ? `：${escapeHtml(query)}` : ''}</div>
+        <div class="k">词性</div><div><span class="pop-tag">${escapeHtml(entry['词性'] || '未标注')}</span></div>
+        <div class="k">释义</div><div>${escapeHtml(definition)}</div>
+      </div>
+      ${matches.length > 1 ? `<div class="pop-chain">还找到 ${matches.length - 1} 个相近词条：${escapeHtml(matches.slice(1).map(match => match.entry['词汇']).join('、'))}</div>` : ''}
+    </div>`;
+  slot.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function enableLocalVocabularyLookup(song) {
+  const button = $('#local-vocab-btn');
+  if (!button) return;
+  button.disabled = true;
+  button.textContent = '正在加载词典并切词…';
+  try {
+    const vocabulary = await loadLocalVocabulary();
+    const tokensByLine = (song.lyrics_raw || []).map(line => window.JpLearnVocab.tokenize(line, vocabulary));
+    const block = $('#lyrics-block');
+    block.innerHTML = renderTokenizedLyricsBlock(song.lyrics_raw, tokensByLine);
+    block.querySelectorAll('.local-token').forEach(node => {
+      node.addEventListener('click', () => {
+        block.querySelectorAll('.local-token.picked').forEach(item => item.classList.remove('picked'));
+        node.classList.add('picked');
+        const lineTokens = tokensByLine[Number(node.closest('.local-token-line').dataset.line)];
+        const token = lineTokens[Number(node.dataset.token)];
+        showLocalWordPop(token.text, token.candidates || window.JpLearnVocab.findMatches(token.text, vocabulary));
+      });
+    });
+    button.textContent = '✓ 已按本地词典切词，点击词块查释义';
+  } catch (err) {
+    button.disabled = false;
+    button.textContent = '📖 自动切词并查本地词典';
+    toast(`本地词典加载失败：${err.message}`);
+  }
 }
 
 function renderLyricsBlock(analysis) {
@@ -345,20 +454,18 @@ function renderEmptyState(song) {
     <div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div>
     <div class="song-head" style="background: linear-gradient(135deg, rgba(102,211,192,0.14), rgba(255,158,182,0.14));">
       <div class="title">${escapeHtml(song.title)}</div>
-      <div class="artist">${escapeHtml(song.artist)}</div>
+      <div class="artist">${escapeHtml(song.artist || '未知歌手')}</div>
       <div class="version-tag empty">🌱 还没有解析版本</div>
     </div>
-    <div class="empty-wrap">
-      <div class="empty-mark">🌸💤</div>
-      <div class="empty-title">这首歌还在睡觉呢</div>
-      <div class="empty-sub">还没有人为「${escapeHtml(song.title)}」生成过语法解析<br>用你自己的 AI API，第一个唤醒它吧</div>
-    </div>
-    <div class="empty-card"><div class="n">1</div><div class="t"><b>配置 API</b> — 填写地址 / Key / 模型名称（仅存于本地浏览器）</div></div>
-    <div class="empty-card"><div class="n">2</div><div class="t"><b>点击开始解析</b> — AI 会自动断句、翻译并拆解语法</div></div>
-    <div class="empty-card"><div class="n">3</div><div class="t"><b>存入公共库</b> — 解析结果会保留下来，后来的人可以直接查看</div></div>
-    <button class="parse-btn" id="start-parse-btn" style="margin-top:10px;">✨ 开始AI解析</button>
+    <button class="parse-btn" id="start-parse-btn">✨ 开始AI解析</button>
+    <div class="section-label">歌词</div>
+    <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw)}</div>
+    <button class="local-vocab-btn" id="local-vocab-btn">📖 自动切词并查本地词典</button>
+    <div class="section-label">单词解析</div>
+    <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">可以先点击「自动切词并查本地词典」，再点击任一词块查看 5757 词词典释义；也可以使用 AI 生成完整语法解析。</div></div></div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startParse(song, { rerun: false }));
+  $('#local-vocab-btn').addEventListener('click', () => enableLocalVocabularyLookup(song));
 }
 
 // ---------- 导入 / 创建新解析 ----------
@@ -430,8 +537,9 @@ async function submitManualImport() {
         github_token: getGitHubToken()
       })
     });
-    if (!res.ok) throw new Error(await res.text());
-    const { id } = await res.json();
+    if (!res.ok) throw new Error(await readErrorMessage(res, '创建失败，请稍后重试'));
+    const { id, song } = await res.json();
+    rememberPendingSong(song);
     toast('歌词记录已创建');
     goto(`song/${id}`);
   } catch (err) {
@@ -450,8 +558,9 @@ async function submitUtatenImport() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, github_token: getGitHubToken() })
     });
-    if (!res.ok) throw new Error('歌词获取失败，请手动输入歌词');
-    const { id } = await res.json();
+    if (!res.ok) throw new Error(await readErrorMessage(res, '歌词获取失败，请手动输入歌词'));
+    const { id, song } = await res.json();
+    rememberPendingSong(song);
     toast('抓取成功，歌词记录已创建');
     goto(`song/${id}`);
   } catch (err) {
@@ -575,6 +684,20 @@ function openSettingsDialog() {
     }
     closeDialog();
   });
+}
+
+async function readErrorMessage(res, fallback) {
+  const copy = res.clone();
+  try {
+    const data = await res.json();
+    return data?.error || fallback;
+  } catch {
+    try {
+      return await copy.text() || fallback;
+    } catch {
+      return fallback;
+    }
+  }
 }
 
 function escapeHtml(str) {
