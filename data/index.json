@@ -4,22 +4,38 @@
       "id": "song001",
       "title": "千本桜",
       "artist": "初音ミク・黒うさP",
-      "aliases": ["千本樱", "Senbonzakura"],
+      "aliases": [
+        "千本樱",
+        "Senbonzakura"
+      ],
       "analysis_count": 1
     },
     {
       "id": "song002",
       "title": "打上花火",
       "artist": "DAOKO × 米津玄師",
-      "aliases": ["打上花火", "Uchiage Hanabi"],
+      "aliases": [
+        "打上花火",
+        "Uchiage Hanabi"
+      ],
       "analysis_count": 1
     },
     {
       "id": "song003",
       "title": "紅蓮華",
       "artist": "LiSA",
-      "aliases": ["紅蓮華", "Crimson Lotus"],
+      "aliases": [
+        "紅蓮華",
+        "Crimson Lotus"
+      ],
       "analysis_count": 1
+    },
+    {
+      "id": "song516450",
+      "title": "Happy Girl 歌詞 喜多村英梨 パパのいうことを聞きなさい! ED ふりがな付 - うたてん",
+      "artist": "",
+      "aliases": [],
+      "analysis_count": 0
     }
   ]
 }
