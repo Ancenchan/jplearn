@@ -319,7 +319,7 @@ function renderRawLyricsBlock(lines) {
   `).join('');
 }
 
-function renderTokenizedLyricsBlock(lines, tokensByLine) {
+function renderTokenizedLyricsBlock(lines, tokensByLine, { showSentenceActions = false } = {}) {
   return (lines || []).map((line, lineIndex) => `
     <div class="lyric-line">
       <div class="lyric-jp local-token-line" data-line="${lineIndex}">
@@ -328,6 +328,7 @@ function renderTokenizedLyricsBlock(lines, tokensByLine) {
           : `<button type="button" class="local-token" data-token="${tokenIndex}">${escapeHtml(token.text)}</button>`
         ).join('')}
       </div>
+      ${showSentenceActions ? `<button type="button" class="line-trans-btn" data-line="${lineIndex}">查看句子</button>` : ''}
     </div>
   `).join('');
 }
@@ -354,7 +355,7 @@ function showLocalWordPop(query, matches) {
   slot.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-async function enableLocalVocabularyLookup(song) {
+async function enableLocalVocabularyLookup(song, { showSentenceActions = false } = {}) {
   const button = $('#local-vocab-btn');
   if (!button) return;
   button.disabled = true;
@@ -363,7 +364,7 @@ async function enableLocalVocabularyLookup(song) {
     const vocabulary = await loadLocalVocabulary();
     const tokensByLine = (song.lyrics_raw || []).map(line => window.JpLearnVocab.tokenize(line, vocabulary));
     const block = $('#lyrics-block');
-    block.innerHTML = renderTokenizedLyricsBlock(song.lyrics_raw, tokensByLine);
+    block.innerHTML = renderTokenizedLyricsBlock(song.lyrics_raw, tokensByLine, { showSentenceActions });
     block.querySelectorAll('.local-token').forEach(node => {
       node.addEventListener('click', () => {
         block.querySelectorAll('.local-token.picked').forEach(item => item.classList.remove('picked'));
@@ -373,6 +374,11 @@ async function enableLocalVocabularyLookup(song) {
         showLocalWordPop(token.text, token.candidates || window.JpLearnVocab.findMatches(token.text, vocabulary));
       });
     });
+    if (showSentenceActions) {
+      block.querySelectorAll('.line-trans-btn').forEach(node => {
+        node.addEventListener('click', () => showUnanalyzedSentence(song.lyrics_raw[Number(node.dataset.line)]));
+      });
+    }
     button.textContent = '✓ 已按本地词典切词，点击词块查释义';
   } catch (err) {
     button.disabled = false;
@@ -447,6 +453,18 @@ function showSentence(analysis, sentenceId) {
   $('#sentence-slot').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+function showUnanalyzedSentence(line) {
+  $('#sentence-label').style.display = 'flex';
+  $('#sentence-slot').innerHTML = `
+    <div class="sentence-card">
+      <div class="sentence-label">SENTENCE · 尚未进行 AI 解析</div>
+      <div class="sentence-jp">${escapeHtml(line || '')}</div>
+      <div class="sentence-cn">这首歌还没有 AI 语法分析，因此暂时无法提供句子合并、翻译和语法解读。</div>
+    </div>
+  `;
+  $('#sentence-slot').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 // ---------- 未解析状态 ----------
 function renderEmptyState(song) {
   const app = $('#app');
@@ -460,12 +478,15 @@ function renderEmptyState(song) {
     <button class="parse-btn" id="start-parse-btn">✨ 开始AI解析</button>
     <div class="section-label">歌词</div>
     <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw)}</div>
-    <button class="local-vocab-btn" id="local-vocab-btn">📖 自动切词并查本地词典</button>
+    <button class="local-vocab-btn" id="local-vocab-btn" disabled>正在加载本地词典并自动切词…</button>
     <div class="section-label">单词解析</div>
-    <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">可以先点击「自动切词并查本地词典」，再点击任一词块查看 5757 词词典释义；也可以使用 AI 生成完整语法解析。</div></div></div>
+    <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">正在自动切词。切词完成后，点击任一词块即可查看 5757 词词典释义。</div></div></div>
+    <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
+    <div id="sentence-slot"></div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startParse(song, { rerun: false }));
-  $('#local-vocab-btn').addEventListener('click', () => enableLocalVocabularyLookup(song));
+  $('#local-vocab-btn').addEventListener('click', () => enableLocalVocabularyLookup(song, { showSentenceActions: true }));
+  enableLocalVocabularyLookup(song, { showSentenceActions: true });
 }
 
 // ---------- 导入 / 创建新解析 ----------
