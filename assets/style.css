@@ -115,7 +115,7 @@ body{
 .local-vocab-btn:disabled{ opacity:.72; cursor:default; }
 
 .lyrics-block{ background: var(--card); border-radius: 22px; padding: 6px 4px; box-shadow: var(--shadow); margin-bottom:18px; }
-.lyric-line{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding: 13px 16px; border-bottom: 1px dashed var(--paper-line); }
+.lyric-line{ display:flex; flex-direction:column; gap:6px; padding: 13px 16px; border-bottom: 1px dashed var(--paper-line); }
 .lyric-line:last-child{ border-bottom:none; }
 .lyric-jp{ font-family:'Zen Maru Gothic'; font-size:16.5px; line-height:2.5; letter-spacing:.02em; word-break: keep-all; }
 .w{ cursor:pointer; border-radius:6px; transition: background .15s; }
@@ -127,6 +127,9 @@ body{
 .line-trans-btn{
   flex-shrink:0; font-size:10.5px; color: var(--mint-deep); background: rgba(102,211,192,0.14);
   padding:5px 10px; border-radius:999px; font-family:'Zen Kaku Gothic New'; white-space:nowrap; cursor:pointer;
+}
+.line-trans{
+  font-size:12px; color: var(--ink-soft); margin-top:4px; line-height:1.6;
 }
 
 .word-pop{

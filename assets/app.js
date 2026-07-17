@@ -387,7 +387,8 @@ function renderLyricsBlock(analysis) {
   block.innerHTML = analysis.lines.map((line, idx) => `
     <div class="lyric-line">
       <div class="lyric-jp" data-line="${idx}">${buildRubyMarkup(line)}</div>
-      <div class="line-trans-btn" data-sentence="${line.sentence_id}">查看句子</div>
+      ${line.translation_cn ? `<div class="line-trans">${escapeHtml(line.translation_cn)}</div>` : ''}
+      ${line.sentence_id ? `<div class="line-trans-btn" data-sentence="${line.sentence_id}">查看句子</div>` : ''}
     </div>
   `).join('');
 
@@ -435,8 +436,19 @@ function showWordPop(word) {
 }
 
 function showSentence(analysis, sentenceId) {
-  const sentence = analysis.sentences.find(s => s.id === sentenceId);
-  if (!sentence) return;
+  const sentence = analysis.sentences?.find(s => s.id === sentenceId);
+  if (!sentence) {
+    $('#sentence-label').style.display = 'flex';
+    $('#sentence-slot').innerHTML = `
+      <div class="sentence-card">
+        <div class="sentence-label">SENTENCE · 暂不可用</div>
+        <div class="sentence-jp"></div>
+        <div class="sentence-cn">当前解析版本中没有句子数据，无法显示跨行合并的句子翻译。</div>
+      </div>
+    `;
+    $('#sentence-slot').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
   $('#sentence-label').style.display = 'flex';
   $('#sentence-slot').innerHTML = `
     <div class="sentence-card">
@@ -470,35 +482,33 @@ function renderEmptyState(song) {
       <div class="artist">${escapeHtml(song.artist || '未知歌手')}</div>
       <div class="version-tag empty">🌱 还没有解析版本</div>
     </div>
-    <button class="parse-btn" id="start-parse-btn">✨ 开始AI解析</button>
+    <button class="parse-btn" id="start-parse-btn">✨ AI 解析（切词+翻译）</button>
     <div class="section-label">歌词</div>
     <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw)}</div>
     <div style="display:flex;gap:8px;margin-top:8px;">
       <button class="local-vocab-btn" id="local-vocab-btn" disabled>正在加载本地词典并自动切词…</button>
-      <button class="parse-btn" id="ai-tokenize-btn" style="background:linear-gradient(135deg,var(--mint),var(--mint-deep));">🤖 AI 切词并显示释义</button>
     </div>
     <div class="section-label">单词解析</div>
     <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">正在自动切词。切词完成后，点击任一词块即可查看 5757 词词典释义。</div></div></div>
     <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
     <div id="sentence-slot"></div>
   `;
-  $('#start-parse-btn').addEventListener('click', () => startParse(song, { rerun: false }));
+  $('#start-parse-btn').addEventListener('click', () => startAiTokenizeAndParse(song));
   $('#local-vocab-btn').addEventListener('click', () => enableLocalVocabularyLookup(song, { showSentenceActions: true }));
-  $('#ai-tokenize-btn').addEventListener('click', () => startAiTokenizeAndParse(song));
   enableLocalVocabularyLookup(song, { showSentenceActions: true });
 }
 
-// 在未解析状态下调用 AI 进行分词（临时，不写入 GitHub）
+// 在未解析状态下调用 AI 进行分词和翻译（临时，不写入 GitHub）
 async function startAiTokenize(song) {
   const cfg = getApiConfig();
   if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
     openApiConfigDialog(() => startAiTokenize(song));
     return;
   }
-  const btn = $('#ai-tokenize-btn');
-  btn.disabled = true; btn.textContent = '🤖 请求 AI 切词…';
+  const btn = $('#start-parse-btn');
+  btn.disabled = true; btn.textContent = '🤖 AI 解析中…';
   try {
-    const prompt = `请把下面的歌词按行分词，并为每个词输出 JSON 数组，字段包含: surface, reading, base, pos, conjugation, chain, meaning。只返回 JSON 格式的数据，不要任何解释。\n\n` + song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n');
+    const prompt = `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：\n\n${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}\n\n请只输出一个 JSON 对象，不要任何解释文字，结构如下：\n{\n  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"..."}],\n  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[\n    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}\n  ]}]\n}`;
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',
       headers: {
@@ -507,47 +517,53 @@ async function startAiTokenize(song) {
       },
       body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }] })
     });
-    if (!res.ok) throw new Error(`AI 接口调用失败: ${res.status}`);
+    if (!res.ok) {
+      let errorDetail = '';
+      try {
+        const errData = await res.json();
+        errorDetail = errData.error?.message || errData.message || '';
+      } catch {}
+      throw new Error(`AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`);
+    }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content || data?.result || '';
     const cleaned = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
 
-    // 期望 parsed 为 { lines: [ { index: 0, words: [...] }, ... ] }
+    // 期望 parsed 为 { lines: [...], sentences: [...] }
     const analysis = { lines: [], sentences: [] };
-    if (Array.isArray(parsed)) {
-      // 兼容：若返回直接是按行数组
-      parsed.forEach((words, idx) => analysis.lines.push({ index: idx, text: song.lyrics_raw[idx] || '', words }));
-    } else if (parsed.lines) {
-      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', words: l.words || [] }));
+    if (parsed.lines) {
+      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', sentence_id: l.sentence_id, translation_cn: l.translation_cn, words: l.words || [] }));
       if (parsed.sentences) analysis.sentences = parsed.sentences;
+    } else if (Array.isArray(parsed)) {
+      parsed.forEach((words, idx) => analysis.lines.push({ index: idx, text: song.lyrics_raw[idx] || '', words }));
     } else {
       throw new Error('AI 返回格式不符合预期');
     }
 
     state.currentAnalysis = analysis;
     renderLyricsBlock(analysis);
-    toast('AI 切词完成（临时视图），点击任意词查看释义');
+    toast('AI 解析完成（临时视图），点击任意词查看释义');
   } catch (err) {
-    toast(`AI 切词失败：${err.message}`);
+    toast(`AI 解析失败：${err.message}`);
   } finally {
-    btn.disabled = false; btn.textContent = '🤖 AI 切词并显示释义';
+    btn.disabled = false; btn.textContent = '✨ AI 解析（切词+翻译）';
   }
 }
 
-// 同时执行 AI 切词（前端临时渲染）和调用 Worker 发起完整解析并保存到 GitHub（若已配置）
+// 执行 AI 解析（前端临时渲染）和调用 Worker 发起完整解析并保存到 GitHub（若已配置）
 async function startAiTokenizeAndParse(song) {
   const cfg = getApiConfig();
   if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
     openApiConfigDialog(() => startAiTokenizeAndParse(song));
     return;
   }
-  // 先做本地临时切词并渲染
+  // 先做本地临时解析并渲染（包含分词和句子翻译）
   await startAiTokenize(song);
 
   const workerBase = getWorkerBase();
   if (!workerBase) {
-    toast('Worker 地址未配置，已本地显示 AI 切词；若想保存解析，请在设置中填写 Worker 地址。');
+    toast('Worker 地址未配置，已本地显示 AI 解析；若想保存解析，请在设置中填写 Worker 地址。');
     return;
   }
 
