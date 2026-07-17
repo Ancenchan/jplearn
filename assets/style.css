@@ -1,0 +1,196 @@
+:root{
+  --bg: #FFF9F4;
+  --card: #FFFFFF;
+  --sakura: #FF9EB6;
+  --sakura-deep: #E8637E;
+  --mint: #66D3C0;
+  --mint-deep: #2FAE97;
+  --lavender: #CBBEFF;
+  --lavender-deep: #8B78E8;
+  --ink: #332F4B;
+  --ink-soft: #837E9E;
+  --paper-line: #F1E7DD;
+  --yellow: #FFE2A6;
+  --shadow: 0 8px 24px rgba(232, 99, 126, 0.10);
+}
+*{ box-sizing: border-box; }
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 8% 8%, rgba(255,158,182,0.10), transparent 40%),
+    radial-gradient(circle at 95% 15%, rgba(102,211,192,0.12), transparent 40%),
+    var(--bg);
+  font-family: 'Noto Sans JP', sans-serif;
+  color: var(--ink);
+  min-height:100vh;
+}
+.app{ max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
+
+.brand{ display:flex; align-items:center; gap:10px; margin: 18px 4px 18px; }
+.brand-mark{
+  width:38px; height:38px; border-radius:12px;
+  background: linear-gradient(135deg, var(--sakura), var(--lavender));
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Zen Maru Gothic'; font-weight:900; color:#fff; font-size:18px;
+  box-shadow: var(--shadow); flex-shrink:0; cursor:pointer;
+}
+.brand-text .title{ font-family:'Zen Maru Gothic'; font-weight:900; font-size:16px; letter-spacing:.02em; }
+.brand-text .sub{ font-size:11px; color:var(--ink-soft); margin-top:1px; }
+
+.search-wrap{ position:relative; margin: 4px 0 22px; }
+.search-wrap input{
+  width:100%; padding:14px 20px 14px 44px;
+  border-radius:999px; border:2px solid var(--paper-line);
+  background:#fff; font-size:14px; font-family:'Noto Sans JP';
+  color:var(--ink); outline:none; transition:border-color .2s;
+}
+.search-wrap input:focus{ border-color: var(--sakura); }
+.search-wrap svg{ position:absolute; left:16px; top:50%; transform:translateY(-50%); }
+.search-hint{ font-size:11px; color:var(--ink-soft); margin: -14px 6px 20px; display:flex; gap:10px; flex-wrap:wrap; }
+.chip{ background: var(--card); border:1px solid var(--paper-line); padding:2px 9px; border-radius:999px; font-size:11px; cursor:pointer; }
+
+.section-label{
+  font-family:'Zen Maru Gothic'; font-size:13px; font-weight:700;
+  color: var(--ink-soft); margin: 0 4px 10px; display:flex; align-items:center; gap:6px;
+}
+.section-label::before{ content:''; width:6px; height:6px; border-radius:50%; background: var(--sakura-deep); display:inline-block; }
+
+.song-card{
+  background: var(--card); border-radius: 20px; padding: 15px 18px; margin-bottom: 12px;
+  display:flex; align-items:center; gap:12px; box-shadow: var(--shadow);
+  border: 1px solid rgba(255,255,255,0.6); border-left: 4px solid var(--sakura);
+  position:relative; overflow:hidden; cursor:pointer; transition: transform .15s ease;
+}
+.song-card:hover{ transform: translateY(-2px); }
+.song-card::after{
+  content:''; position:absolute; right:-18px; top:-18px; width:70px; height:70px; border-radius:50%;
+  background: radial-gradient(circle, rgba(255,158,182,0.16), transparent 70%);
+}
+.song-card.no-analysis{ border-left-color: var(--paper-line); }
+.song-info{ flex:1; min-width:0; }
+.song-title{ font-family:'Zen Maru Gothic'; font-weight:700; font-size:14.5px; }
+.song-artist{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+.song-meta{
+  font-size:10.5px; color: var(--mint-deep); margin-top:6px;
+  background: rgba(102,211,192,0.14); display:inline-block; padding:2px 8px; border-radius:999px;
+  font-family:'Zen Kaku Gothic New';
+}
+.song-meta.empty{ color:var(--sakura-deep); background:rgba(255,158,182,0.16); }
+.song-arrow{ color: var(--paper-line); font-size:20px; }
+
+.fab-row{ display:flex; justify-content:center; }
+.fab{
+  position: sticky; bottom: 16px; margin: 24px auto 0; width: fit-content; display:flex; align-items:center; gap:8px;
+  background: var(--ink); color:#fff; font-family:'Zen Maru Gothic'; font-weight:700; font-size:13px;
+  padding:13px 22px; border-radius:999px; box-shadow: 0 10px 24px rgba(51,47,75,0.28); cursor:pointer; border:none;
+}
+
+.back-row{ display:flex; align-items:center; gap:10px; margin: 16px 4px 14px; font-size:13px; color: var(--ink-soft); cursor:pointer; }
+
+.song-head{
+  background: linear-gradient(135deg, rgba(255,158,182,0.18), rgba(203,190,255,0.18));
+  border-radius: 22px; padding: 18px; margin-bottom:16px;
+}
+.song-head .title{ font-family:'Zen Maru Gothic'; font-weight:900; font-size:17px; }
+.song-head .artist{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+.version-tag{
+  display:inline-flex; align-items:center; gap:4px; font-size:10.5px; margin-top:8px; color: var(--lavender-deep);
+  background:#fff; padding:3px 9px; border-radius:999px; font-family:'Zen Kaku Gothic New';
+}
+.version-tag.empty{ color: var(--sakura-deep); }
+
+.parse-btn{
+  width:100%; padding:14px; border:none; border-radius:16px;
+  background: linear-gradient(135deg, var(--sakura), var(--sakura-deep));
+  color:#fff; font-family:'Zen Maru Gothic'; font-weight:700; font-size:14px;
+  box-shadow: 0 8px 20px rgba(232,99,126,0.32); margin-bottom: 18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.parse-btn:disabled{ opacity:.6; cursor:default; }
+.local-vocab-btn{
+  width:100%; padding:11px; border:2px solid rgba(102,211,192,0.36); border-radius:14px;
+  background:rgba(102,211,192,0.12); color:var(--mint-deep); font-family:'Zen Maru Gothic';
+  font-weight:700; font-size:12.5px; margin:-8px 0 18px; cursor:pointer;
+}
+.local-vocab-btn:disabled{ opacity:.72; cursor:default; }
+
+.lyrics-block{ background: var(--card); border-radius: 22px; padding: 6px 4px; box-shadow: var(--shadow); margin-bottom:18px; }
+.lyric-line{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding: 13px 16px; border-bottom: 1px dashed var(--paper-line); }
+.lyric-line:last-child{ border-bottom:none; }
+.lyric-jp{ font-family:'Zen Maru Gothic'; font-size:16.5px; line-height:2.5; letter-spacing:.02em; word-break: keep-all; }
+.w{ cursor:pointer; border-radius:6px; transition: background .15s; }
+.w:hover, .w.picked{ background: var(--yellow); }
+.w rt{ font-size:9px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New'; font-weight:400; letter-spacing:0; }
+.local-token{ appearance:none; border:0; padding:0 2px; margin:0; background:transparent; color:inherit; font:inherit; cursor:pointer; border-radius:6px; }
+.local-token.matched{ background:rgba(255,226,166,0.40); }
+.local-token:hover, .local-token.picked{ background:var(--yellow); }
+.line-trans-btn{
+  flex-shrink:0; font-size:10.5px; color: var(--mint-deep); background: rgba(102,211,192,0.14);
+  padding:5px 10px; border-radius:999px; font-family:'Zen Kaku Gothic New'; white-space:nowrap; cursor:pointer;
+}
+
+.word-pop{
+  background: var(--card); border-radius: 20px; padding:18px; box-shadow: var(--shadow);
+  border: 2px solid var(--yellow); position:relative; margin-bottom:18px;
+}
+.word-pop::before{
+  content:'✿'; position:absolute; top:-14px; left:18px; background: var(--sakura); color:#fff;
+  width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:13px; box-shadow: 0 4px 10px rgba(232,99,126,0.35);
+}
+.word-pop-head{ display:flex; align-items:baseline; gap:10px; margin: 6px 0 12px; }
+.word-pop-jp{ font-family:'Zen Maru Gothic'; font-size:22px; font-weight:700; }
+.word-pop-yomi{ font-size:13px; color: var(--ink-soft); }
+.pop-grid{ display:grid; grid-template-columns: auto 1fr; gap:8px 14px; font-size:12.5px; }
+.pop-grid .k{ color:var(--ink-soft); font-family:'Zen Kaku Gothic New'; }
+.pop-tag{ display:inline-block; font-size:11px; background: rgba(139,120,232,0.14); color: var(--lavender-deep); padding:2px 9px; border-radius:999px; }
+.pop-chain{ margin-top:12px; padding-top:12px; border-top:1px dashed var(--paper-line); font-size:12px; color: var(--ink-soft); }
+.pop-chain b{ color:var(--ink); font-family:'Zen Maru Gothic'; }
+.pop-empty{ font-size:12.5px; color: var(--ink-soft); text-align:center; padding: 10px 0; }
+
+.sentence-card{ background: rgba(255,255,255,0.7); border-radius:18px; padding:16px; border: 1px solid var(--paper-line); margin-bottom: 30px; }
+.sentence-label{ font-size:10.5px; color:var(--mint-deep); font-family:'Zen Kaku Gothic New'; margin-bottom:6px; }
+.sentence-jp{ font-family:'Zen Maru Gothic'; font-size:14.5px; margin-bottom:8px; }
+.sentence-cn{ font-size:13px; color: var(--ink-soft); }
+
+.empty-wrap{ text-align:center; padding: 50px 20px 20px; }
+.empty-mark{
+  width:88px; height:88px; margin: 0 auto 20px; border-radius:28px;
+  background: linear-gradient(135deg, rgba(255,158,182,0.22), rgba(203,190,255,0.22));
+  display:flex; align-items:center; justify-content:center; font-size:36px;
+}
+.empty-title{ font-family:'Zen Maru Gothic'; font-weight:700; font-size:16px; margin-bottom:8px; }
+.empty-sub{ font-size:12.5px; color: var(--ink-soft); line-height:1.7; max-width:280px; margin: 0 auto 28px; }
+.empty-card{
+  background: var(--card); border-radius:18px; padding:16px; box-shadow: var(--shadow);
+  text-align:left; margin-bottom:16px; display:flex; gap:10px; align-items:flex-start;
+}
+.empty-card .n{
+  width:22px; height:22px; border-radius:50%; background: var(--mint); color:#fff; font-size:11px;
+  font-family:'Zen Maru Gothic'; font-weight:700; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; margin-top:1px;
+}
+.empty-card .t{ font-size:12.5px; }
+.empty-card .t b{ font-family:'Zen Maru Gothic'; }
+
+/* form (manual import / API config) */
+.field{ margin-bottom:14px; }
+.field label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px; font-family:'Zen Kaku Gothic New'; }
+.field input, .field textarea{
+  width:100%; padding:11px 14px; border-radius:14px; border:2px solid var(--paper-line);
+  background:#fff; font-size:13.5px; font-family:'Noto Sans JP'; color:var(--ink); outline:none;
+}
+.field input:focus, .field textarea:focus{ border-color: var(--sakura); }
+.field textarea{ resize:vertical; min-height:120px; }
+.tab-row{ display:flex; gap:8px; margin-bottom:18px; }
+.tab-btn{
+  flex:1; text-align:center; padding:10px; border-radius:14px; border:2px solid var(--paper-line);
+  background:#fff; font-family:'Zen Maru Gothic'; font-weight:700; font-size:12.5px; color:var(--ink-soft); cursor:pointer;
+}
+.tab-btn.active{ background: var(--ink); border-color: var(--ink); color:#fff; }
+
+.toast{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+  background: var(--ink); color:#fff; font-size:12.5px; padding:10px 18px; border-radius:999px;
+  box-shadow: 0 10px 24px rgba(51,47,75,0.3); font-family:'Zen Kaku Gothic New'; z-index:100;
+}

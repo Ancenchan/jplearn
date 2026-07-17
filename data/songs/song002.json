@@ -1,0 +1,13 @@
+{
+  "id": "song002",
+  "title": "打上花火",
+  "artist": "DAOKO × 米津玄師",
+  "aliases": ["打上花火", "Uchiage Hanabi"],
+  "source": "manual",
+  "created_at": "2026-07-14T09:00:00+08:00",
+  "lyrics_raw": [
+    "夏の終わりの ひかりの中",
+    "君の笑う声が まだ胸に残る"
+  ],
+  "analysis_versions": ["song002_20260714090000"]
+}

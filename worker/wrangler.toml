@@ -1,0 +1,11 @@
+name = "jplearn-worker"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# 部署后用下面的命令设置 secrets（不要写在这个文件里）：
+#   wrangler secret put GITHUB_TOKEN
+# 普通环境变量可以直接写在这里，也可以用 wrangler secret put 统一管理
+[vars]
+GITHUB_OWNER = "Ancenchan"
+GITHUB_REPO = "jplearn"
+GITHUB_BRANCH = "main"

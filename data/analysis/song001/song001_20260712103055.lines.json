@@ -1,0 +1,33 @@
+{
+  "lines": [
+    {
+      "index": 0,
+      "text": "夢を探してた",
+      "translation_cn": "寻找着那一天的梦想",
+      "words": [
+        { "surface": "夢", "reading": "ゆめ", "base": "夢", "pos": "名词", "meaning": "梦，梦想" },
+        { "surface": "を", "reading": "を", "base": "を", "pos": "助词", "meaning": "宾格助词，标记动作对象" },
+        { "surface": "探してた", "reading": "さがしてた", "base": "探す", "pos": "五段动词", "conjugation": "て形 + いた（口语约音）→ 过去持续", "chain": "探す → 探して → 探してた", "meaning": "寻找、探寻" }
+      ]
+    },
+    {
+      "index": 1,
+      "text": "広げた戒和洋世界",
+      "translation_cn": "展开了这戒律交织、和洋并存的世界",
+      "words": [
+        { "surface": "広げた", "reading": "ひろげた", "base": "広げる", "pos": "一段动词", "conjugation": "过去式", "chain": "広げる → 広げた", "meaning": "展开、扩大" },
+        { "surface": "戒和洋世界", "reading": "かいわようせかい", "base": "戒和洋世界", "pos": "名词（复合词）", "meaning": "作词创造的复合词，意指戒律与和洋文化并存的世界观" }
+      ]
+    },
+    {
+      "index": 2,
+      "text": "会いたくて声にすれば",
+      "translation_cn": "如果想见你就把它化作声音喊出来",
+      "words": [
+        { "surface": "会いたくて", "reading": "あいたくて", "base": "会う", "pos": "五段动词", "conjugation": "たい形 + て形（表示原因/并列）", "chain": "会う → 会いたい → 会いたくて", "meaning": "想见面" },
+        { "surface": "声", "reading": "こえ", "base": "声", "pos": "名词", "meaning": "声音" },
+        { "surface": "にすれば", "reading": "にすれば", "base": "にする", "pos": "动词短语", "conjugation": "假定形（ば形）", "chain": "にする → にすれば", "meaning": "如果化作……的话" }
+      ]
+    }
+  ]
+}

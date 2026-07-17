@@ -1,0 +1,12 @@
+{
+  "id": "song003_20260714093000",
+  "song_id": "song003",
+  "created_at": "2026-07-14T09:30:00+08:00",
+  "lyrics_source": "manual",
+  "ai_model": "gpt-4o",
+  "status": "completed",
+  "lyrics_snapshot": [
+    "運命を照らす",
+    "その闇を越えて"
+  ]
+}
