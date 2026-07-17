@@ -291,14 +291,20 @@ async function renderSongDetail(songId) {
       <div class="version-tag">🍡 ${escapeHtml(analysis.ai_model)}解析版 · ${song.analysis_versions.length}个版本</div>
     </div>
     <button class="parse-btn" id="reparse-btn">✨ 用新版本重新解析</button>
-    <div class="section-label">歌词</div>
-    <div class="lyrics-block" id="lyrics-block"></div>
-    <div class="section-label">单词解析</div>
-    <div id="word-pop-slot">
-      <div class="word-pop"><div class="pop-empty">点击上方任意一个词，查看它的语法拆解</div></div>
+    <div class="song-detail-layout">
+      <div class="detail-left">
+        <div class="section-label">歌词</div>
+        <div class="lyrics-block" id="lyrics-block"></div>
+      </div>
+      <div class="detail-right">
+        <div class="section-label">单词解析</div>
+        <div id="word-pop-slot">
+          <div class="word-pop"><div class="pop-empty">点击左侧任意一个词，查看它的语法拆解</div></div>
+        </div>
+        <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
+        <div id="sentence-slot"></div>
+      </div>
     </div>
-    <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
-    <div id="sentence-slot"></div>
   `;
 
   renderLyricsBlock(analysis);
@@ -388,7 +394,7 @@ function renderLyricsBlock(analysis) {
     <div class="lyric-line">
       <div class="lyric-jp" data-line="${idx}">${buildRubyMarkup(line)}</div>
       ${line.translation_cn ? `<div class="line-trans">${escapeHtml(line.translation_cn)}</div>` : ''}
-      ${line.sentence_id ? `<div class="line-trans-btn" data-sentence="${line.sentence_id}">查看句子</div>` : ''}
+      ${line.sentence_id ? `<button type="button" class="line-trans-btn" data-sentence="${line.sentence_id}">🔗 句子</button>` : ''}
     </div>
   `).join('');
 
@@ -432,7 +438,6 @@ function showWordPop(word) {
       ${word.chain ? `<div class="pop-chain">变化过程 &nbsp;<b>${escapeHtml(word.chain)}</b>${word.conjugation ? `（${escapeHtml(word.conjugation)}）` : ''}</div>` : ''}
     </div>
   `;
-  slot.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function showSentence(analysis, sentenceId) {
@@ -446,18 +451,29 @@ function showSentence(analysis, sentenceId) {
         <div class="sentence-cn">当前解析版本中没有句子数据，无法显示跨行合并的句子翻译。</div>
       </div>
     `;
-    $('#sentence-slot').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
   $('#sentence-label').style.display = 'flex';
+  const grammarHtml = (sentence.grammar_analysis && sentence.grammar_analysis.length)
+    ? sentence.grammar_analysis.map(g => `
+        <div class="grammar-item">
+          <div class="grammar-word">${escapeHtml(g.word)}</div>
+          <div class="grammar-meta">
+            <span class="grammar-pos">${escapeHtml(g.pos)}</span>
+            ${g.base && g.base !== g.word ? `<span class="grammar-base">原形: ${escapeHtml(g.base)}</span>` : ''}
+          </div>
+          <div class="grammar-role">${escapeHtml(g.role)}</div>
+        </div>
+      `).join('')
+    : '';
   $('#sentence-slot').innerHTML = `
     <div class="sentence-card">
       <div class="sentence-label">SENTENCE · 跨行自动合并</div>
       <div class="sentence-jp">${escapeHtml(sentence.text_jp)}</div>
       <div class="sentence-cn">${escapeHtml(sentence.translation_cn)}</div>
+      ${grammarHtml ? `<div class="grammar-section"><div class="grammar-title">语法拆解</div>${grammarHtml}</div>` : ''}
     </div>
   `;
-  $('#sentence-slot').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function showUnanalyzedSentence(line) {
@@ -483,15 +499,21 @@ function renderEmptyState(song) {
       <div class="version-tag empty">🌱 还没有解析版本</div>
     </div>
     <button class="parse-btn" id="start-parse-btn">✨ AI 解析（切词+翻译）</button>
-    <div class="section-label">歌词</div>
-    <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw)}</div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button class="local-vocab-btn" id="local-vocab-btn" disabled>正在加载本地词典并自动切词…</button>
+    <div class="song-detail-layout">
+      <div class="detail-left">
+        <div class="section-label">歌词</div>
+        <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw)}</div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="local-vocab-btn" id="local-vocab-btn" disabled>正在加载本地词典并自动切词…</button>
+        </div>
+      </div>
+      <div class="detail-right">
+        <div class="section-label">单词解析</div>
+        <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">正在自动切词。切词完成后，点击任一词块即可查看 5757 词词典释义。</div></div></div>
+        <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
+        <div id="sentence-slot"></div>
+      </div>
     </div>
-    <div class="section-label">单词解析</div>
-    <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">正在自动切词。切词完成后，点击任一词块即可查看 5757 词词典释义。</div></div></div>
-    <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
-    <div id="sentence-slot"></div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startAiTokenizeAndParse(song));
   $('#local-vocab-btn').addEventListener('click', () => enableLocalVocabularyLookup(song, { showSentenceActions: true }));
@@ -508,7 +530,7 @@ async function startAiTokenize(song) {
   const btn = $('#start-parse-btn');
   btn.disabled = true; btn.textContent = '🤖 AI 解析中…';
   try {
-    const prompt = `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：\n\n${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}\n\n请只输出一个 JSON 对象，不要任何解释文字，结构如下：\n{\n  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"..."}],\n  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[\n    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}\n  ]}]\n}`;
+    const prompt = `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：\n\n${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}\n\n请只输出一个 JSON 对象，不要任何解释文字，结构如下：\n{\n  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"...","grammar_analysis":[{"word":"新しい","base":"新しい","pos":"形容词连体形","role":"修饰「ミライ」"},{"word":"ミライ","base":"ミライ","pos":"名词","role":"片假名写法，意为'未来'；宾语的核心名词"},{"word":"を","base":"を","pos":"格助词","role":"提示「思い描く新しいミライ」整个名词短语为「探してた」的宾语"}]}],\n  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[\n    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}\n  ]}]\n}\n其中 grammar_analysis 是对整个句子的语法拆解，对每个词（或最小单位）给出原形、词性，以及它在句中的语法作用（修饰谁、是主语/宾语/谓语等）。请用中文描述 role 字段。`;
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',
       headers: {

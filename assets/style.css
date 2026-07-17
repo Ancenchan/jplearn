@@ -26,6 +26,19 @@ body{
 }
 .app{ max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
 
+/* 歌曲详情页：宽屏双栏布局 */
+.song-detail-layout{ display: flex; gap: 16px; align-items: flex-start; }
+.song-detail-layout .detail-left{ flex: 1 1 55%; min-width: 0; }
+.song-detail-layout .detail-right{ flex: 0 0 38%; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
+@media (min-width: 900px){
+  .app{ max-width: 860px; }
+}
+@media (max-width: 768px){
+  .song-detail-layout{ flex-direction: column; }
+  .song-detail-layout .detail-left{ flex: 1 1 auto; }
+  .song-detail-layout .detail-right{ flex: 1 1 auto; position: static; max-height: none; overflow-y: visible; }
+}
+
 .brand{ display:flex; align-items:center; gap:10px; margin: 18px 4px 18px; }
 .brand-mark{
   width:38px; height:38px; border-radius:12px;
@@ -125,9 +138,11 @@ body{
 .local-token.matched{ background:rgba(255,226,166,0.40); }
 .local-token:hover, .local-token.picked{ background:var(--yellow); }
 .line-trans-btn{
-  flex-shrink:0; font-size:10.5px; color: var(--mint-deep); background: rgba(102,211,192,0.14);
-  padding:5px 10px; border-radius:999px; font-family:'Zen Kaku Gothic New'; white-space:nowrap; cursor:pointer;
+  align-self:flex-end; border:none; font-size:10px; color: var(--mint-deep); background: rgba(102,211,192,0.14);
+  padding:3px 8px; border-radius:999px; font-family:'Zen Kaku Gothic New'; white-space:nowrap; cursor:pointer;
+  transition: background .15s;
 }
+.line-trans-btn:hover{ background: rgba(102,211,192,0.28); }
 .line-trans{
   font-size:12px; color: var(--ink-soft); margin-top:4px; line-height:1.6;
 }
@@ -151,10 +166,20 @@ body{
 .pop-chain b{ color:var(--ink); font-family:'Zen Maru Gothic'; }
 .pop-empty{ font-size:12.5px; color: var(--ink-soft); text-align:center; padding: 10px 0; }
 
-.sentence-card{ background: rgba(255,255,255,0.7); border-radius:18px; padding:16px; border: 1px solid var(--paper-line); margin-bottom: 30px; }
+.sentence-card{ background: rgba(255,255,255,0.7); border-radius:18px; padding:16px; border: 1px solid var(--paper-line); margin-bottom: 18px; }
 .sentence-label{ font-size:10.5px; color:var(--mint-deep); font-family:'Zen Kaku Gothic New'; margin-bottom:6px; }
 .sentence-jp{ font-family:'Zen Maru Gothic'; font-size:14.5px; margin-bottom:8px; }
-.sentence-cn{ font-size:13px; color: var(--ink-soft); }
+.sentence-cn{ font-size:13px; color: var(--ink-soft); margin-bottom: 12px; }
+
+/* 语法拆解 */
+.grammar-section{ margin-top:12px; padding-top:12px; border-top:1px dashed var(--paper-line); }
+.grammar-title{ font-size:11px; font-family:'Zen Kaku Gothic New'; color:var(--lavender-deep); margin-bottom:10px; font-weight:700; }
+.grammar-item{ margin-bottom:10px; padding:8px 10px; background: rgba(255,255,255,0.6); border-radius:10px; border-left: 3px solid var(--lavender); }
+.grammar-word{ font-family:'Zen Maru Gothic'; font-size:14px; font-weight:700; color: var(--ink); margin-bottom:4px; }
+.grammar-meta{ display:flex; gap:8px; align-items:center; margin-bottom:4px; flex-wrap:wrap; }
+.grammar-pos{ font-size:10.5px; background: rgba(139,120,232,0.14); color: var(--lavender-deep); padding:2px 8px; border-radius:999px; font-family:'Zen Kaku Gothic New'; }
+.grammar-base{ font-size:10.5px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New'; }
+.grammar-role{ font-size:11.5px; color: var(--ink); line-height:1.6; }
 
 .empty-wrap{ text-align:center; padding: 50px 20px 20px; }
 .empty-mark{

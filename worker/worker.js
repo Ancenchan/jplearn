@@ -216,11 +216,12 @@ ${lyrics.map((l, i) => `${i}: ${l}`).join('\n')}
 
 请只输出一个 JSON 对象，不要任何解释文字，结构如下：
 {
-  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"..."}],
+  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"...","grammar_analysis":[{"word":"新しい","base":"新しい","pos":"形容词连体形","role":"修饰「ミライ」"},{"word":"ミライ","base":"ミライ","pos":"名词","role":"片假名写法，意为'未来'；宾语的核心名词"},{"word":"を","base":"を","pos":"格助词","role":"提示「思い描く新しいミライ」整个名词短语为「探してた」的宾语"}]}],
   "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[
     {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}
   ]}]
-}`;
+}
+其中 grammar_analysis 是对整个句子的语法拆解，对每个词（或最小单位）给出原形、词性，以及它在句中的语法作用（修饰谁、是主语/宾语/谓语等）。请用中文描述 role 字段。`;
 }
 
 function tryParseJSON(text) {
