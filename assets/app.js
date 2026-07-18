@@ -552,21 +552,16 @@ function renderEmptyState(song) {
       <div class="detail-left">
         <div class="section-label">歌词</div>
         <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana)}</div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="local-vocab-btn" id="local-vocab-btn" disabled>正在加载本地词典并自动切词…</button>
-        </div>
       </div>
       <div class="detail-right">
         <div class="section-label">单词解析</div>
-        <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">正在自动切词。切词完成后，点击任一词块即可查看 5757 词词典释义。</div></div></div>
+        <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">点击上方「AI 解析」按钮，获取单词切分和释义</div></div></div>
         <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
         <div id="sentence-slot"></div>
       </div>
     </div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startAiTokenizeAndParse(song));
-  $('#local-vocab-btn').addEventListener('click', () => enableLocalVocabularyLookup(song, { showSentenceActions: true }));
-  enableLocalVocabularyLookup(song, { showSentenceActions: true });
 }
 
 // 在未解析状态下调用 AI 进行分词和翻译（临时，不写入 GitHub）
