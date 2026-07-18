@@ -250,19 +250,20 @@ async function renderSongDetail(songId) {
   app.innerHTML = `<div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div><div class="empty-sub" style="padding:40px 0;text-align:center;">加载中…</div>`;
 
   let song, indexEntry;
-  try {
-    song = await fetchJSON(`${DATA_BASE}/songs/${songId}.json`);
-    if (!state.index) state.index = await fetchJSON(`${DATA_BASE}/index.json`);
-    indexEntry = state.index.songs.find(s => s.id === songId);
-  } catch (err) {
-    const pendingSong = getPendingSong(songId);
-    if (!pendingSong) {
+  const pendingSong = getPendingSong(songId);
+  if (pendingSong) {
+    song = pendingSong;
+    indexEntry = null;
+    toast('歌词已创建，正在显示刚导入的内容');
+  } else {
+    try {
+      song = await fetchJSON(`${DATA_BASE}/songs/${songId}.json`);
+      if (!state.index) state.index = await fetchJSON(`${DATA_BASE}/index.json`);
+      indexEntry = state.index.songs.find(s => s.id === songId);
+    } catch (err) {
       app.innerHTML = `<div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div><div class="empty-sub" style="padding:40px 0;text-align:center;">找不到这首歌：${err.message}</div>`;
       return;
     }
-    song = pendingSong;
-    indexEntry = null;
-    toast('歌词已创建，GitHub Pages 同步稍有延迟，先显示刚导入的内容');
   }
   if (songId === song.id && indexEntry) clearPendingSong(songId);
   state.currentSong = song;
