@@ -323,16 +323,18 @@ function renderRawLyricsBlock(lines) {
 function parseUtatenLyrics(text) {
   let result = '';
   let i = 0;
+  const kanjiRegex = /[\u4e00-\u9fa5\u3400-\u4dbf]/;
+  const kanaRegex = /[\u3040-\u30ff]/;
   while (i < text.length) {
     const char = text[i];
-    if (/[\u4e00-\u9fa5\u3400-\u4dbf\u3041-\u3096\u30a1-\u30f6]/.test(char)) {
+    if (kanjiRegex.test(char)) {
       let kanji = '';
-      while (i < text.length && /[\u4e00-\u9fa5\u3400-\u4dbf]/.test(text[i])) {
+      while (i < text.length && kanjiRegex.test(text[i])) {
         kanji += text[i];
         i++;
       }
       let kana = '';
-      while (i < text.length && /[\u3041-\u3096\u30a1-\u30f6]/.test(text[i])) {
+      while (i < text.length && kanaRegex.test(text[i])) {
         kana += text[i];
         i++;
       }
@@ -343,6 +345,13 @@ function parseUtatenLyrics(text) {
       } else {
         result += escapeHtml(kana);
       }
+    } else if (kanaRegex.test(char)) {
+      let kana = '';
+      while (i < text.length && kanaRegex.test(text[i])) {
+        kana += text[i];
+        i++;
+      }
+      result += escapeHtml(kana);
     } else {
       result += escapeHtml(char);
       i++;
@@ -356,8 +365,8 @@ function renderTokenizedLyricsBlock(lines, tokensByLine, { showSentenceActions =
     <div class="lyric-line">
       <div class="lyric-jp local-token-line" data-line="${lineIndex}">
         ${(tokensByLine[lineIndex] || []).map((token, tokenIndex) => token.matched
-          ? `<button type="button" class="local-token matched" data-token="${tokenIndex}">${escapeHtml(token.text)}</button>`
-          : `<button type="button" class="local-token" data-token="${tokenIndex}">${escapeHtml(token.text)}</button>`
+          ? `<button type="button" class="local-token matched" data-token="${tokenIndex}">${parseUtatenLyrics(token.text)}</button>`
+          : `<button type="button" class="local-token" data-token="${tokenIndex}">${parseUtatenLyrics(token.text)}</button>`
         ).join('')}
       </div>
       ${showSentenceActions ? `<button type="button" class="line-trans-btn" data-line="${lineIndex}">查看句子</button>` : ''}
