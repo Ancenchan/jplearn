@@ -287,9 +287,14 @@ async function renderSongDetail(songId) {
   app.innerHTML = `
     <div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div>
     <div class="song-head">
-      <div class="title">${escapeHtml(song.title)}</div>
-      <div class="artist">${escapeHtml(song.artist)}</div>
-      <div class="version-tag">🍡 ${escapeHtml(analysis.ai_model)}解析版 · ${song.analysis_versions.length}个版本</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="min-width:0;">
+          <div class="title">${escapeHtml(song.title)}</div>
+          <div class="artist">${escapeHtml(song.artist)}</div>
+          <div class="version-tag">🍡 ${escapeHtml(analysis.ai_model)}解析版 · ${song.analysis_versions.length}个版本</div>
+        </div>
+        <button class="delete-song-btn" id="delete-song-btn" title="删除歌曲">🗑️</button>
+      </div>
     </div>
     <button class="parse-btn" id="reparse-btn">✨ 用新版本重新解析</button>
     <div class="song-detail-layout">
@@ -311,6 +316,7 @@ async function renderSongDetail(songId) {
   renderLyricsBlock(analysis);
 
   $('#reparse-btn').addEventListener('click', () => startParse(song, { rerun: true }));
+  $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
 function renderRawLyricsBlock(lines, furiganaLines) {
@@ -543,9 +549,14 @@ function renderEmptyState(song) {
   app.innerHTML = `
     <div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div>
     <div class="song-head" style="background: linear-gradient(135deg, rgba(102,211,192,0.14), rgba(255,158,182,0.14));">
-      <div class="title">${escapeHtml(song.title)}</div>
-      <div class="artist">${escapeHtml(song.artist || '未知歌手')}</div>
-      <div class="version-tag empty">🌱 还没有解析版本</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="min-width:0;">
+          <div class="title">${escapeHtml(song.title)}</div>
+          <div class="artist">${escapeHtml(song.artist || '未知歌手')}</div>
+          <div class="version-tag empty">🌱 还没有解析版本</div>
+        </div>
+        <button class="delete-song-btn" id="delete-song-btn" title="删除歌曲">🗑️</button>
+      </div>
     </div>
     <button class="parse-btn" id="start-parse-btn">✨ AI 解析（切词+翻译）</button>
     <div class="song-detail-layout">
@@ -562,6 +573,7 @@ function renderEmptyState(song) {
     </div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startAiTokenizeAndParse(song));
+  $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
 // 在未解析状态下调用 AI 进行分词和翻译（临时，不写入 GitHub）
@@ -734,6 +746,27 @@ async function submitUtatenImport() {
     goto('');
   } catch (err) {
     toast(err.message);
+  }
+}
+
+// ---------- 删除歌曲 ----------
+async function deleteSong(song) {
+  if (!confirm(`确定要删除「${song.title}」吗？此操作不可撤销。`)) return;
+  const workerBase = getWorkerBase();
+  try {
+    const res = await fetch(`${workerBase}/api/songs/${song.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `删除失败 (HTTP ${res.status})`);
+    }
+    toast('已删除');
+    state.index = null;
+    goto('');
+  } catch (err) {
+    toast(`删除失败：${err.message}`);
   }
 }
 
