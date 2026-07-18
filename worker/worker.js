@@ -36,6 +36,10 @@ export default {
       if (url.pathname === '/api/songs' && request.method === 'POST') {
         return await handleCreateSong(request, env);
       }
+      const deleteMatch = url.pathname.match(/^\/api\/songs\/([^/]+)$/);
+      if (deleteMatch && request.method === 'DELETE') {
+        return await handleDeleteSong(request, env, deleteMatch[1]);
+      }
       return json({ error: 'Not found' }, 404);
     } catch (err) {
       return json({ error: err.message || 'Unexpected error' }, 500);
@@ -347,6 +351,23 @@ async function handleCreateSong(request, env) {
   return json({ id: song.id, song });
 }
 
+async function handleDeleteSong(request, env, songId) {
+  if (!songId || !/^song\d+$/.test(songId)) {
+    return json({ error: '无效的歌曲 ID' }, 400);
+  }
+
+  const songPath = `data/songs/${songId}.json`;
+  const existing = await githubGetFile(env, songPath);
+  if (!existing) {
+    return json({ error: '歌曲不存在' }, 404);
+  }
+
+  await githubDeleteFile(env, songPath, `删除歌曲: ${songId}`);
+  await removeFromIndex(env, songId);
+
+  return json({ ok: true, id: songId });
+}
+
 async function createSongRecord(env, { title, artist, lyrics_raw, lyrics_with_furigana, source, note }) {
   const id = `song${String(Date.now()).slice(-6)}`;
   const doc = {
@@ -397,6 +418,24 @@ async function githubPutJSON(env, path, obj, message) {
   if (!res.ok) throw new Error(`写入 ${path} 失败: ${await res.text()}`);
 }
 
+async function githubDeleteFile(env, path, message) {
+  const existing = await githubGetFile(env, path);
+  if (!existing) return;
+  const res = await fetch(
+    `${GITHUB_API}/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${path}`,
+    {
+      method: 'DELETE',
+      headers: githubHeaders(env),
+      body: JSON.stringify({
+        message,
+        sha: existing.sha,
+        branch: env.GITHUB_BRANCH
+      })
+    }
+  );
+  if (!res.ok) throw new Error(`删除 ${path} 失败: ${await res.text()}`);
+}
+
 function githubHeaders(env) {
   return {
     'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
@@ -410,6 +449,15 @@ async function addToIndex(env, songEntry) {
   const index = file ? file.json : { songs: [] };
   index.songs.push(songEntry);
   await githubPutJSON(env, 'data/index.json', index, `index: 新增 ${songEntry.title}`);
+}
+
+async function removeFromIndex(env, songId) {
+  const file = await githubGetFile(env, 'data/index.json');
+  if (!file) return;
+  const before = file.json.songs.length;
+  file.json.songs = file.json.songs.filter(s => s.id !== songId);
+  if (file.json.songs.length === before) return;
+  await githubPutJSON(env, 'data/index.json', file.json, `index: 删除 ${songId}`);
 }
 
 async function bumpIndexCount(env, songId) {
