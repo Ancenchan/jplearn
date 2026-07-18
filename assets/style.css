@@ -136,6 +136,10 @@ body{
 ruby{ ruby-position: over; }
 ruby rt{ font-size:9px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New'; font-weight:400; letter-spacing:0; }
 .w rt{ font-size:9px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New'; font-weight:400; letter-spacing:0; }
+
+.furigana-wrap{ display: inline-flex; flex-direction: column; align-items: center; justify-content: center; }
+.furigana-text{ font-size:8px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New'; font-weight:400; line-height:1; }
+.furigana-kanji{ font-size:16.5px; font-family:'Zen Maru Gothic'; line-height:1.2; }
 .local-token{ appearance:none; border:0; padding:0 2px; margin:0; background:transparent; color:inherit; font:inherit; cursor:pointer; border-radius:6px; }
 .local-token.matched{ background:rgba(255,226,166,0.40); }
 .local-token:hover, .local-token.picked{ background:var(--yellow); }

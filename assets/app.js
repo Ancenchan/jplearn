@@ -339,7 +339,7 @@ function parseUtatenLyrics(text) {
         i++;
       }
       if (kanji && kana) {
-        result += `<ruby>${escapeHtml(kanji)}<rt>${escapeHtml(kana)}</rt></ruby>`;
+        result += `<span class="furigana-wrap"><span class="furigana-text">${escapeHtml(kana)}</span><span class="furigana-kanji">${escapeHtml(kanji)}</span></span>`;
       } else if (kanji) {
         result += escapeHtml(kanji);
       } else {
