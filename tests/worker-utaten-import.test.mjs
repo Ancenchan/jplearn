@@ -65,7 +65,7 @@ test('imports Utaten lyrics from nested lyricBody markup', async () => {
       return new Response(`
         <html>
           <head><title>Nested Song / 歌詞</title></head>
-          <body><div class="lyricBody"><div><ruby>桜<rt>さくら</rt></ruby></div><div>舞う</div></div></body>
+          <body><div class="lyricBody"><div class="hiragana"><span class="ruby"><span class="rb">桜</span><span class="rt">さくら</span></span><br>舞う</div></div></body>
         </html>
       `, { status: 200, headers: { 'Content-Type': 'text/html' } });
     }
@@ -102,14 +102,14 @@ test('imports Utaten lyrics from nested lyricBody markup', async () => {
     assert.deepEqual(songDoc.lyrics_raw, ['桜さくら', '舞う']);
     assert.deepEqual(songDoc.lyrics_with_furigana, [
       [{ text: '桜', furigana: 'さくら' }],
-      [{ text: '舞', furigana: '' }, { text: 'う', furigana: '' }]
+      [{ text: '舞う', furigana: '' }]
     ]);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test('imports Utaten lyrics with furigana from ruby tags', async () => {
+test('imports Utaten lyrics with furigana from span ruby tags', async () => {
   const originalFetch = globalThis.fetch;
   const writes = [];
 
@@ -119,7 +119,7 @@ test('imports Utaten lyrics with furigana from ruby tags', async () => {
       return new Response(`
         <html>
           <head><title>不思議の国 / 歌詞</title></head>
-          <body><div class="lyricBody"><div><ruby>不思議<rt>ふしぎ</rt></ruby>の<ruby>国<rt>くに</rt></ruby></div></div></body>
+          <body><div class="lyricBody"><div class="hiragana"><span class="ruby"><span class="rb">不思議</span><span class="rt">ふしぎ</span></span>に<span class="ruby"><span class="rb">頬</span><span class="rt">ほ</span></span>っぺた</div></div></body>
         </html>
       `, { status: 200, headers: { 'Content-Type': 'text/html' } });
     }
@@ -154,7 +154,12 @@ test('imports Utaten lyrics with furigana from ruby tags', async () => {
     assert.ok(songWrite);
     const songDoc = JSON.parse(Buffer.from(songWrite.content, 'base64').toString('utf8'));
     assert.deepEqual(songDoc.lyrics_with_furigana, [
-      [{ text: '不思議', furigana: 'ふしぎ' }, { text: 'の', furigana: '' }, { text: '国', furigana: 'くに' }]
+      [
+        { text: '不思議', furigana: 'ふしぎ' },
+        { text: 'に', furigana: '' },
+        { text: '頬', furigana: 'ほ' },
+        { text: 'っぺた', furigana: '' }
+      ]
     ]);
   } finally {
     globalThis.fetch = originalFetch;

@@ -138,6 +138,11 @@ function escapeRegExp(value) {
 function normalizeLyricsHtml(fragment) {
   return fragment
     .replace(/<rp[\s\S]*?<\/rp>/gi, '')
+    .replace(/<span class="ruby"[^>]*><span class="rb"[^>]*>([\s\S]*?)<\/span><span class="rt"[^>]*>([\s\S]*?)<\/span><\/span>/gi, (_, rb, rt) => {
+      const kanji = rb.trim();
+      const kana = rt.trim();
+      return kanji && kana ? `${kanji}${kana}` : kanji;
+    })
     .replace(/<ruby[^>]*>([\s\S]*?)<\/ruby>/gi, (_, content) => {
       const kanji = content.replace(/<rt[\s\S]*?<\/rt>/gi, '').trim();
       const rtMatch = content.match(/<rt[\s\S]*?>([\s\S]*?)<\/rt>/i);
@@ -177,29 +182,52 @@ function extractLyricsWithFurigana(html) {
       return lines.map(line => {
         const parts = [];
         let remaining = line;
+        let textBuffer = '';
+
+        const flushTextBuffer = () => {
+          if (textBuffer) {
+            parts.push({ text: decodeHtml(textBuffer), furigana: '' });
+            textBuffer = '';
+          }
+        };
 
         while (remaining.length > 0) {
-          const rubyMatch = remaining.match(/^<ruby[^>]*>([\s\S]*?)<\/ruby>/i);
-          if (rubyMatch) {
-            const content = rubyMatch[1];
-            const kanji = content.replace(/<rt[\s\S]*?<\/rt>/gi, '').trim();
-            const rtMatch = content.match(/<rt[\s\S]*?>([\s\S]*?)<\/rt>/i);
-            const furigana = rtMatch ? rtMatch[1].trim() : '';
+          // utaten 的 <span class="ruby"><span class="rb">汉字</span><span class="rt">假名</span></span> 结构
+          const spanRubyMatch = remaining.match(/^<span class="ruby"[^>]*><span class="rb"[^>]*>([\s\S]*?)<\/span><span class="rt"[^>]*>([\s\S]*?)<\/span><\/span>/i);
+          if (spanRubyMatch) {
+            flushTextBuffer();
+            const kanji = spanRubyMatch[1].trim();
+            const furigana = spanRubyMatch[2].trim();
             if (kanji) {
               parts.push({ text: decodeHtml(kanji), furigana: decodeHtml(furigana) });
             }
-            remaining = remaining.slice(rubyMatch[0].length);
+            remaining = remaining.slice(spanRubyMatch[0].length);
           } else {
-            const tagMatch = remaining.match(/^<[^>]+>/);
-            if (tagMatch) {
-              remaining = remaining.slice(tagMatch[0].length);
+            // 标准 <ruby>汉字<rt>假名</rt></ruby> 结构
+            const rubyMatch = remaining.match(/^<ruby[^>]*>([\s\S]*?)<\/ruby>/i);
+            if (rubyMatch) {
+              flushTextBuffer();
+              const content = rubyMatch[1];
+              const kanji = content.replace(/<rt[\s\S]*?<\/rt>/gi, '').trim();
+              const rtMatch = content.match(/<rt[\s\S]*?>([\s\S]*?)<\/rt>/i);
+              const furigana = rtMatch ? rtMatch[1].trim() : '';
+              if (kanji) {
+                parts.push({ text: decodeHtml(kanji), furigana: decodeHtml(furigana) });
+              }
+              remaining = remaining.slice(rubyMatch[0].length);
             } else {
-              parts.push({ text: decodeHtml(remaining[0]), furigana: '' });
-              remaining = remaining.slice(1);
+              const tagMatch = remaining.match(/^<[^>]+>/);
+              if (tagMatch) {
+                remaining = remaining.slice(tagMatch[0].length);
+              } else {
+                textBuffer += remaining[0];
+                remaining = remaining.slice(1);
+              }
             }
           }
         }
 
+        flushTextBuffer();
         return parts;
       });
     }
