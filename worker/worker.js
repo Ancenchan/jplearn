@@ -135,8 +135,14 @@ function escapeRegExp(value) {
 
 function normalizeLyricsHtml(fragment) {
   return fragment
-    .replace(/<rt[\s\S]*?<\/rt>/gi, '')
     .replace(/<rp[\s\S]*?<\/rp>/gi, '')
+    .replace(/<ruby[^>]*>([\s\S]*?)<\/ruby>/gi, (_, content) => {
+      const kanji = content.replace(/<rt[\s\S]*?<\/rt>/gi, '').trim();
+      const rtMatch = content.match(/<rt[\s\S]*?>([\s\S]*?)<\/rt>/i);
+      const kana = rtMatch ? rtMatch[1].trim() : '';
+      return kanji && kana ? `${kanji}${kana}` : kanji;
+    })
+    .replace(/<rt[\s\S]*?<\/rt>/gi, '')
     .replace(/<ruby[^>]*>/gi, '')
     .replace(/<\/ruby>/gi, '')
     .replace(/<br\s*\/?>/gi, '\n')
