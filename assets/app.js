@@ -319,7 +319,7 @@ function renderRawLyricsBlock(lines, furiganaLines) {
     if (furiganaLines && furiganaLines[idx]) {
       content = furiganaLines[idx].map(part => {
         if (part.furigana) {
-          return `<span class="furigana-wrap"><span class="furigana-text">${escapeHtml(part.furigana)}</span><span class="furigana-kanji">${escapeHtml(part.text)}</span></span>`;
+          return `<ruby><rb>${escapeHtml(part.text)}</rb><rt>${escapeHtml(part.furigana)}</rt></ruby>`;
         }
         return escapeHtml(part.text);
       }).join('');
@@ -335,6 +335,7 @@ function parseUtatenLyrics(text) {
   let i = 0;
   const kanjiRegex = /[\u4e00-\u9fa5\u3400-\u4dbf]/;
   const kanaRegex = /[\u3040-\u30ff]/;
+  const particleRegex = /^(に|を|は|が|の|で|と|へ|よ|さ|ね|わ)$/;
   while (i < text.length) {
     const char = text[i];
     if (kanjiRegex.test(char)) {
@@ -344,16 +345,39 @@ function parseUtatenLyrics(text) {
         i++;
       }
       let kana = '';
+      let remainingKana = '';
       while (i < text.length && kanaRegex.test(text[i])) {
-        kana += text[i];
+        remainingKana += text[i];
         i++;
       }
+      if (remainingKana) {
+        const expectedKanaLength = kanji.length * 2;
+        if (remainingKana.length >= kanji.length && remainingKana.length <= expectedKanaLength + 1) {
+          kana = remainingKana;
+        } else {
+          let splitAt = kanji.length;
+          while (splitAt < remainingKana.length && splitAt <= expectedKanaLength) {
+            const nextChar = remainingKana[splitAt];
+            if (particleRegex.test(nextChar)) {
+              break;
+            }
+            splitAt++;
+          }
+          if (splitAt >= kanji.length) {
+            kana = remainingKana.slice(0, splitAt);
+            remainingKana = remainingKana.slice(splitAt);
+          } else {
+            remainingKana = remainingKana;
+          }
+        }
+      }
       if (kanji && kana) {
-        result += `<span class="furigana-wrap"><span class="furigana-text">${escapeHtml(kana)}</span><span class="furigana-kanji">${escapeHtml(kanji)}</span></span>`;
-      } else if (kanji) {
-        result += escapeHtml(kanji);
+        result += `<ruby><rb>${escapeHtml(kanji)}</rb><rt>${escapeHtml(kana)}</rt></ruby>`;
       } else {
-        result += escapeHtml(kana);
+        result += escapeHtml(kanji);
+      }
+      if (remainingKana) {
+        result += escapeHtml(remainingKana);
       }
     } else if (kanaRegex.test(char)) {
       let kana = '';
