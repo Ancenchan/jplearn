@@ -344,7 +344,8 @@ function parseUtatenLyrics(text) {
         i++;
       }
       let kana = '';
-      while (i < text.length && kanaRegex.test(text[i])) {
+      const maxKana = kanji.length * 4;
+      while (i < text.length && kanaRegex.test(text[i]) && kana.length < maxKana) {
         kana += text[i];
         i++;
       }
@@ -709,7 +710,7 @@ async function submitManualImport() {
     const { id, song } = await res.json();
     rememberPendingSong(song);
     toast('歌词记录已创建');
-    goto(`song/${id}`);
+    goto('');
   } catch (err) {
     toast(`创建失败：${err.message}`);
   }
@@ -730,7 +731,7 @@ async function submitUtatenImport() {
     const { id, song } = await res.json();
     rememberPendingSong(song);
     toast('抓取成功，歌词记录已创建');
-    goto(`song/${id}`);
+    goto('');
   } catch (err) {
     toast(err.message);
   }
