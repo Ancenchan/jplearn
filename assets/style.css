@@ -120,6 +120,12 @@ body{
   display:flex; align-items:center; justify-content:center; gap:8px;
 }
 .parse-btn:disabled{ opacity:.6; cursor:default; }
+.delete-song-btn{
+  border:none; background:rgba(255,255,255,0.6); cursor:pointer;
+  font-size:16px; padding:6px 10px; border-radius:10px;
+  transition: background .15s;
+}
+.delete-song-btn:hover{ background:#fff; color:var(--sakura-deep); }
 .local-vocab-btn{
   width:100%; padding:11px; border:2px solid rgba(102,211,192,0.36); border-radius:14px;
   background:rgba(102,211,192,0.12); color:var(--mint-deep); font-family:'Zen Maru Gothic';
