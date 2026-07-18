@@ -315,9 +315,40 @@ async function renderSongDetail(songId) {
 function renderRawLyricsBlock(lines) {
   return (lines || []).map((line, idx) => `
     <div class="lyric-line">
-      <div class="lyric-jp" data-line="${idx}">${escapeHtml(line)}</div>
+      <div class="lyric-jp" data-line="${idx}">${parseUtatenLyrics(line)}</div>
     </div>
   `).join('');
+}
+
+function parseUtatenLyrics(text) {
+  let result = '';
+  let i = 0;
+  while (i < text.length) {
+    const char = text[i];
+    if (/[\u4e00-\u9fa5\u3400-\u4dbf\u3041-\u3096\u30a1-\u30f6]/.test(char)) {
+      let kanji = '';
+      while (i < text.length && /[\u4e00-\u9fa5\u3400-\u4dbf]/.test(text[i])) {
+        kanji += text[i];
+        i++;
+      }
+      let kana = '';
+      while (i < text.length && /[\u3041-\u3096\u30a1-\u30f6]/.test(text[i])) {
+        kana += text[i];
+        i++;
+      }
+      if (kanji && kana) {
+        result += `<ruby>${escapeHtml(kanji)}<rt>${escapeHtml(kana)}</rt></ruby>`;
+      } else if (kanji) {
+        result += escapeHtml(kanji);
+      } else {
+        result += escapeHtml(kana);
+      }
+    } else {
+      result += escapeHtml(char);
+      i++;
+    }
+  }
+  return result;
 }
 
 function renderTokenizedLyricsBlock(lines, tokensByLine, { showSentenceActions = false } = {}) {

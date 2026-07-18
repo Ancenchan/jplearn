@@ -133,6 +133,8 @@ body{
 .lyric-jp{ font-family:'Zen Maru Gothic'; font-size:16.5px; line-height:2.5; letter-spacing:.02em; word-break: keep-all; }
 .w{ cursor:pointer; border-radius:6px; transition: background .15s; }
 .w:hover, .w.picked{ background: var(--yellow); }
+ruby{ display: inline-flex; flex-direction: column; align-items: center; }
+ruby rt{ font-size:9px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New'; font-weight:400; letter-spacing:0; margin-top:-2px; }
 .w rt{ font-size:9px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New'; font-weight:400; letter-spacing:0; }
 .local-token{ appearance:none; border:0; padding:0 2px; margin:0; background:transparent; color:inherit; font:inherit; cursor:pointer; border-radius:6px; }
 .local-token.matched{ background:rgba(255,226,166,0.40); }
