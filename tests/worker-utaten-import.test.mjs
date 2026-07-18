@@ -100,6 +100,62 @@ test('imports Utaten lyrics from nested lyricBody markup', async () => {
     assert.ok(songWrite);
     const songDoc = JSON.parse(Buffer.from(songWrite.content, 'base64').toString('utf8'));
     assert.deepEqual(songDoc.lyrics_raw, ['桜さくら', '舞う']);
+    assert.deepEqual(songDoc.lyrics_with_furigana, [
+      [{ text: '桜', furigana: 'さくら' }],
+      [{ text: '舞', furigana: '' }, { text: 'う', furigana: '' }]
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('imports Utaten lyrics with furigana from ruby tags', async () => {
+  const originalFetch = globalThis.fetch;
+  const writes = [];
+
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (target.startsWith('https://utaten.com/')) {
+      return new Response(`
+        <html>
+          <head><title>不思議の国 / 歌詞</title></head>
+          <body><div class="lyricBody"><div><ruby>不思議<rt>ふしぎ</rt></ruby>の<ruby>国<rt>くに</rt></ruby></div></div></body>
+        </html>
+      `, { status: 200, headers: { 'Content-Type': 'text/html' } });
+    }
+
+    if (options.method === 'PUT') {
+      writes.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
+    return new Response(JSON.stringify({
+      content: btoa(JSON.stringify({ songs: [] })),
+      sha: 'index-sha'
+    }), { status: 200 });
+  };
+
+  try {
+    const request = new Request('https://worker.test/api/utaten-import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://utaten.com/lyric/furigana-test' })
+    });
+
+    const response = await worker.fetch(request, {
+      GITHUB_OWNER: 'owner',
+      GITHUB_REPO: 'repo',
+      GITHUB_BRANCH: 'main',
+      GITHUB_TOKEN: 'token'
+    });
+
+    assert.equal(response.status, 200);
+    const songWrite = writes.find(write => write.message === '新增歌曲: 不思議の国');
+    assert.ok(songWrite);
+    const songDoc = JSON.parse(Buffer.from(songWrite.content, 'base64').toString('utf8'));
+    assert.deepEqual(songDoc.lyrics_with_furigana, [
+      [{ text: '不思議', furigana: 'ふしぎ' }, { text: 'の', furigana: '' }, { text: '国', furigana: 'くに' }]
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

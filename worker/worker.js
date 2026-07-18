@@ -82,9 +82,11 @@ async function handleUtatenImport(request, env) {
     return json({ error: '已取得 Utaten 页面，但未识别到歌词正文。页面结构可能已变化，请改用手动输入或更新抓取规则。' }, 502);
   }
 
+  const lyricsWithFurigana = extractLyricsWithFurigana(html);
+
   const title = titleMatch ? decodeHtml(titleMatch[1]).split('/')[0].trim() : '未命名歌曲';
   const song = await createSongRecord(env, {
-    title, artist: '', lyrics_raw: lyricsRaw, source: url, note: 'Utaten自动导入'
+    title, artist: '', lyrics_raw: lyricsRaw, lyrics_with_furigana: lyricsWithFurigana, source: url, note: 'Utaten自动导入'
   });
   return json({ id: song.id, song });
 }
@@ -152,6 +154,58 @@ function normalizeLyricsHtml(fragment) {
     .map(line => decodeHtml(line).replace(/\s+/g, ' ').trim())
     .filter(Boolean)
     .filter(line => !/^この歌詞|^無料歌詞検索|^歌詞の位置/.test(line));
+}
+
+function extractLyricsWithFurigana(html) {
+  const containers = [
+    extractByClass(html, 'hiragana'),
+    extractByClass(html, 'lyricBody'),
+    extractByClass(html, 'lyricsBody'),
+    extractByClass(html, 'lyric-body'),
+    extractByClass(html, 'romaji')
+  ].filter(Boolean);
+
+  for (const container of containers) {
+    const fragment = container
+      .replace(/<rp[\s\S]*?<\/rp>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li)>/gi, '\n');
+
+    const lines = fragment.split('\n').filter(line => line.trim() && !/^この歌詞|^無料歌詞検索|^歌詞の位置/.test(line.trim()));
+
+    if (lines.length) {
+      return lines.map(line => {
+        const parts = [];
+        let remaining = line;
+
+        while (remaining.length > 0) {
+          const rubyMatch = remaining.match(/^<ruby[^>]*>([\s\S]*?)<\/ruby>/i);
+          if (rubyMatch) {
+            const content = rubyMatch[1];
+            const kanji = content.replace(/<rt[\s\S]*?<\/rt>/gi, '').trim();
+            const rtMatch = content.match(/<rt[\s\S]*?>([\s\S]*?)<\/rt>/i);
+            const furigana = rtMatch ? rtMatch[1].trim() : '';
+            if (kanji) {
+              parts.push({ text: decodeHtml(kanji), furigana: decodeHtml(furigana) });
+            }
+            remaining = remaining.slice(rubyMatch[0].length);
+          } else {
+            const tagMatch = remaining.match(/^<[^>]+>/);
+            if (tagMatch) {
+              remaining = remaining.slice(tagMatch[0].length);
+            } else {
+              parts.push({ text: decodeHtml(remaining[0]), furigana: '' });
+              remaining = remaining.slice(1);
+            }
+          }
+        }
+
+        return parts;
+      });
+    }
+  }
+
+  return [];
 }
 
 function decodeHtml(text) {
@@ -265,7 +319,7 @@ async function handleCreateSong(request, env) {
   return json({ id: song.id, song });
 }
 
-async function createSongRecord(env, { title, artist, lyrics_raw, source, note }) {
+async function createSongRecord(env, { title, artist, lyrics_raw, lyrics_with_furigana, source, note }) {
   const id = `song${String(Date.now()).slice(-6)}`;
   const doc = {
     id, title, artist,
@@ -274,6 +328,7 @@ async function createSongRecord(env, { title, artist, lyrics_raw, source, note }
     note: note || '',
     created_at: new Date().toISOString(),
     lyrics_raw,
+    lyrics_with_furigana: lyrics_with_furigana || [],
     analysis_versions: []
   };
   await githubPutJSON(env, `data/songs/${id}.json`, doc, `新增歌曲: ${title}`);

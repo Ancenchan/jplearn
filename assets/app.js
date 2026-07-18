@@ -312,12 +312,21 @@ async function renderSongDetail(songId) {
   $('#reparse-btn').addEventListener('click', () => startParse(song, { rerun: true }));
 }
 
-function renderRawLyricsBlock(lines) {
-  return (lines || []).map((line, idx) => `
-    <div class="lyric-line">
-      <div class="lyric-jp" data-line="${idx}">${parseUtatenLyrics(line)}</div>
-    </div>
-  `).join('');
+function renderRawLyricsBlock(lines, furiganaLines) {
+  return (lines || []).map((line, idx) => {
+    let content = '';
+    if (furiganaLines && furiganaLines[idx]) {
+      content = furiganaLines[idx].map(part => {
+        if (part.furigana) {
+          return `<span class="furigana-wrap"><span class="furigana-text">${escapeHtml(part.furigana)}</span><span class="furigana-kanji">${escapeHtml(part.text)}</span></span>`;
+        }
+        return escapeHtml(part.text);
+      }).join('');
+    } else {
+      content = parseUtatenLyrics(line);
+    }
+    return `<div class="lyric-line"><div class="lyric-jp" data-line="${idx}">${content}</div></div>`;
+  }).join('');
 }
 
 function parseUtatenLyrics(text) {
@@ -542,7 +551,7 @@ function renderEmptyState(song) {
     <div class="song-detail-layout">
       <div class="detail-left">
         <div class="section-label">歌词</div>
-        <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw)}</div>
+        <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana)}</div>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="local-vocab-btn" id="local-vocab-btn" disabled>正在加载本地词典并自动切词…</button>
         </div>
