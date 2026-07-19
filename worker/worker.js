@@ -16,7 +16,7 @@
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*', // 上线后建议改成你的 GitHub Pages 域名
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS,DELETE',
   'Access-Control-Allow-Headers': 'Content-Type'
 };
 
