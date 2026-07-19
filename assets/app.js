@@ -799,28 +799,34 @@ async function deleteSong(song) {
         'User-Agent': 'jplearn-app'
       }
     });
-    if (indexRes.ok) {
-      const indexData = await indexRes.json();
-      const indexContent = JSON.parse(decodeURIComponent(escape(atob(indexData.content.replace(/\n/g, '')))));
-      const before = indexContent.songs.length;
-      indexContent.songs = indexContent.songs.filter(s => s.id !== song.id);
-      if (indexContent.songs.length !== before) {
-        await fetch('https://api.github.com/repos/Ancenchan/jplearn/contents/data/index.json', {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json',
-            'User-Agent': 'jplearn-app',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: `index: 删除 ${song.id}`,
-            content: btoa(unescape(encodeURIComponent(JSON.stringify(indexContent, null, 2)))),
-            sha: indexData.sha,
-            branch: 'main'
-          })
-        });
-      }
+    if (!indexRes.ok) {
+      throw new Error(`获取 index.json 失败 (HTTP ${indexRes.status})`);
+    }
+    const indexData = await indexRes.json();
+    const indexContent = JSON.parse(decodeURIComponent(escape(atob(indexData.content.replace(/\n/g, '')))));
+    const before = indexContent.songs.length;
+    indexContent.songs = indexContent.songs.filter(s => s.id !== song.id);
+    if (indexContent.songs.length === before) {
+      throw new Error('index.json 中未找到该歌曲记录');
+    }
+    const putRes = await fetch('https://api.github.com/repos/Ancenchan/jplearn/contents/data/index.json', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `index: 删除 ${song.id}`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(indexContent, null, 2)))),
+        sha: indexData.sha,
+        branch: 'main'
+      })
+    });
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `更新 index.json 失败 (HTTP ${putRes.status})`);
     }
 
     toast('已删除');
