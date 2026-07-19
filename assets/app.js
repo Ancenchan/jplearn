@@ -592,9 +592,36 @@ async function startAiTokenize(song) {
     openApiConfigDialog(() => startAiTokenize(song));
     return;
   }
+
+  const logWindow = el(`
+    <div class="ai-log-window">
+      <div class="log-header">
+        <span class="log-title">AI 解析日志</span>
+        <button class="log-close" type="button">×</button>
+      </div>
+      <div class="log-body" id="ai-log-content"></div>
+    </div>
+  `);
+  document.body.appendChild(logWindow);
+
+  function log(msg, type = 'info') {
+    const content = $('#ai-log-content');
+    if (!content) return;
+    const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
+    content.appendChild(line);
+    content.scrollTop = content.scrollHeight;
+    console.log(`[AI解析] ${msg}`);
+  }
+
   const btn = $('#start-parse-btn');
   btn.disabled = true; btn.textContent = '🤖 AI 解析中…';
   try {
+    const startTime = Date.now();
+    log(`⏳ 开始解析「${song.title}」`);
+    log(`📤 发送请求到: ${cfg.apiUrl}`);
+    log(`📊 模型: ${cfg.model}`);
+    log(`📝 歌词行数: ${song.lyrics_raw.length}`);
+
     const prompt = `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：\n\n${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}\n\n请只输出一个 JSON 对象，不要任何解释文字，结构如下：\n{\n  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"...","grammar_analysis":[{"word":"新しい","base":"新しい","pos":"形容词连体形","role":"修饰「ミライ」"},{"word":"ミライ","base":"ミライ","pos":"名词","role":"片假名写法，意为'未来'；宾语的核心名词"},{"word":"を","base":"を","pos":"格助词","role":"提示「思い描く新しいミライ」整个名词短语为「探してた」的宾语"}]}],\n  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[\n    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}\n  ]}]\n}\n其中 grammar_analysis 是对整个句子的语法拆解，对每个词（或最小单位）给出原形、词性，以及它在句中的语法作用（修饰谁、是主语/宾语/谓语等）。请用中文描述 role 字段。`;
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',
@@ -604,38 +631,70 @@ async function startAiTokenize(song) {
       },
       body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }] })
     });
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    log(`✅ 请求完成 (${elapsed}s)`, 'success');
+    log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
+
     if (!res.ok) {
       let errorDetail = '';
       try {
         const errData = await res.json();
         errorDetail = errData.error?.message || errData.message || '';
       } catch {}
-      throw new Error(`AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`);
+      const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
+      log(`❌ ${errMsg}`, 'error');
+      throw new Error(errMsg);
     }
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || data?.result || '';
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
 
-    // 期望 parsed 为 { lines: [...], sentences: [...] }
+    const data = await res.json();
+    log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
+    
+    const text = data.choices?.[0]?.message?.content || data?.result || '';
+    if (!text) {
+      log('❌ AI 返回内容为空', 'error');
+      throw new Error('AI 返回内容为空');
+    }
+    
+    log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
+    log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
+
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+      log(`✅ JSON 解析成功`, 'success');
+    } catch (e) {
+      log(`❌ JSON 解析失败: ${e.message}`, 'error');
+      log(`📝 原始内容: ${cleaned.slice(0, 200)}${cleaned.length > 200 ? '...' : ''}`, 'error');
+      throw new Error(`JSON 解析失败: ${e.message}`);
+    }
+
     const analysis = { lines: [], sentences: [] };
     if (parsed.lines) {
       parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', sentence_id: l.sentence_id, translation_cn: l.translation_cn, words: l.words || [] }));
       if (parsed.sentences) analysis.sentences = parsed.sentences;
+      log(`✅ 解析完成: ${analysis.lines.length} 行, ${analysis.sentences.length} 句子`, 'success');
     } else if (Array.isArray(parsed)) {
       parsed.forEach((words, idx) => analysis.lines.push({ index: idx, text: song.lyrics_raw[idx] || '', words }));
+      log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
     } else {
+      log('❌ AI 返回格式不符合预期', 'error');
       throw new Error('AI 返回格式不符合预期');
     }
 
     state.currentAnalysis = analysis;
     renderLyricsBlock(analysis);
+    log(`🎉 本地渲染完成`, 'success');
     toast('AI 解析完成（临时视图），点击任意词查看释义');
   } catch (err) {
+    log(`❌ 错误: ${err.message}`, 'error');
     toast(`AI 解析失败：${err.message}`);
   } finally {
     btn.disabled = false; btn.textContent = '✨ AI 解析（切词+翻译）';
+    logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
   }
+  return logWindow;
 }
 
 // 执行 AI 解析（前端临时渲染）和调用 Worker 发起完整解析并保存到 GitHub（若已配置）
@@ -645,8 +704,7 @@ async function startAiTokenizeAndParse(song) {
     openApiConfigDialog(() => startAiTokenizeAndParse(song));
     return;
   }
-  // 先做本地临时解析并渲染（包含分词和句子翻译）
-  await startAiTokenize(song);
+  const logWindow = await startAiTokenize(song);
 
   const workerBase = getWorkerBase();
   if (!workerBase) {
@@ -654,7 +712,7 @@ async function startAiTokenizeAndParse(song) {
     return;
   }
 
-  // 同步发起写入解析的请求（startParse 会处理进度 UI 和错误反馈）
+  if (logWindow) logWindow.remove();
   startParse(song, { rerun: false });
 }
 
