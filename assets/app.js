@@ -801,7 +801,7 @@ async function deleteSong(song) {
     });
     if (indexRes.ok) {
       const indexData = await indexRes.json();
-      const indexContent = JSON.parse(atob(indexData.content.replace(/\n/g, '')));
+      const indexContent = JSON.parse(decodeURIComponent(escape(atob(indexData.content.replace(/\n/g, '')))));
       const before = indexContent.songs.length;
       indexContent.songs = indexContent.songs.filter(s => s.id !== song.id);
       if (indexContent.songs.length !== before) {
