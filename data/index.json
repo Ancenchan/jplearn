@@ -2,30 +2,30 @@
   "songs": [
     {
       "id": "song001",
-      "title": "千本桜",
-      "artist": "初音ミク・黒うさP",
+      "title": "åæ¬æ¡",
+      "artist": "åé³ãã¯ã»é»ããP",
       "aliases": [
-        "千本樱",
+        "åæ¬æ¨±",
         "Senbonzakura"
       ],
       "analysis_count": 1
     },
     {
       "id": "song002",
-      "title": "打上花火",
-      "artist": "DAOKO × 米津玄師",
+      "title": "æä¸è±ç«",
+      "artist": "DAOKO Ã ç±³æ´¥çå¸«",
       "aliases": [
-        "打上花火",
+        "æä¸è±ç«",
         "Uchiage Hanabi"
       ],
       "analysis_count": 1
     },
     {
       "id": "song003",
-      "title": "紅蓮華",
+      "title": "ç´è®è¯",
       "artist": "LiSA",
       "aliases": [
-        "紅蓮華",
+        "ç´è®è¯",
         "Crimson Lotus"
       ],
       "analysis_count": 1
@@ -33,57 +33,50 @@
     {
       "id": "song516450",
       "title": "Happy Girl",
-      "artist": "喜多村英梨",
+      "artist": "åå¤æè±æ¢¨",
       "aliases": [
-        "パパのいうことを聞きなさい! ED"
+        "ããã®ãããã¨ãèããªãã! ED"
       ],
       "analysis_count": 0
     },
     {
       "id": "song693066",
-      "title": "Happy Girl 歌詞 喜多村英梨 パパのいうことを聞きなさい! ED ふりがな付 - うたてん",
+      "title": "Happy Girl æ­è© åå¤æè±æ¢¨ ããã®ãããã¨ãèããªãã! ED ãµãããªä» - ããã¦ã",
       "artist": "",
       "aliases": [],
       "analysis_count": 0
     },
     {
       "id": "song617874",
-      "title": "Happy Girl 歌詞 喜多村英梨 パパのいうことを聞きなさい! ED ふりがな付 - うたてん",
+      "title": "Happy Girl æ­è© åå¤æè±æ¢¨ ããã®ãããã¨ãèããªãã! ED ãµãããªä» - ããã¦ã",
       "artist": "",
       "aliases": [],
       "analysis_count": 0
     },
     {
       "id": "song926840",
-      "title": "Happy Girl 歌詞 喜多村英梨 パパのいうことを聞きなさい! ED ふりがな付 - うたてん",
-      "artist": "",
-      "aliases": [],
-      "analysis_count": 0
-    },
-    {
-      "id": "song939175",
-      "title": "Happy Girl 歌詞 喜多村英梨 パパのいうことを聞きなさい! ED ふりがな付 - うたてん",
+      "title": "Happy Girl æ­è© åå¤æè±æ¢¨ ããã®ãããã¨ãèããªãã! ED ãµãããªä» - ããã¦ã",
       "artist": "",
       "aliases": [],
       "analysis_count": 0
     },
     {
       "id": "song021222",
-      "title": "Coloring 歌詞 堀江由衣 パパのいうことを聞きなさい! ED ふりがな付 - うたてん",
+      "title": "Coloring æ­è© å æ±ç±è¡£ ããã®ãããã¨ãèããªãã! ED ãµãããªä» - ããã¦ã",
       "artist": "",
       "aliases": [],
       "analysis_count": 0
     },
     {
       "id": "song133075",
-      "title": "少女レイ 歌詞 みきとP feat. 初音ミク ふりがな付 - うたてん",
+      "title": "å°å¥³ã¬ã¤ æ­è© ã¿ãã¨P feat. åé³ãã¯ ãµãããªä» - ããã¦ã",
       "artist": "",
       "aliases": [],
       "analysis_count": 0
     },
     {
       "id": "song171922",
-      "title": "少女レイ 歌詞 みきとP feat. 初音ミク ふりがな付 - うたてん",
+      "title": "å°å¥³ã¬ã¤ æ­è© ã¿ãã¨P feat. åé³ãã¯ ãµãããªä» - ããã¦ã",
       "artist": "",
       "aliases": [],
       "analysis_count": 0
