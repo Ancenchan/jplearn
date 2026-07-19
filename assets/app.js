@@ -825,7 +825,7 @@ async function deleteSong(song) {
 
     toast('已删除');
     state.index = null;
-    goto('');
+    location.reload();
   } catch (err) {
     toast(`删除失败：${err.message}`);
   }
