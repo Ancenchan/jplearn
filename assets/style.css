@@ -259,3 +259,21 @@ ruby rt{ font-size:9px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New
 .progress-text{
   margin-top:16px; font-size:13px; color:var(--ink-soft); font-family:'Zen Kaku Gothic New';
 }
+
+.ai-log-window{
+  position:fixed; left:16px; right:16px; bottom:16px; max-width:448px; margin:0 auto;
+  background:rgba(255,255,255,0.96); border-radius:20px; box-shadow:0 16px 48px rgba(0,0,0,0.12);
+  z-index:300; max-height:60vh; display:flex; flex-direction:column;
+}
+.log-header{
+  display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
+  border-bottom:1px solid var(--paper-line);
+}
+.log-title{ font-family:'Zen Maru Gothic'; font-weight:700; font-size:13px; color:var(--ink); }
+.log-close{ border:none; background:none; font-size:20px; color:var(--ink-soft); cursor:pointer; line-height:1; padding:0; }
+.log-body{ flex:1; padding:12px 16px; overflow-y:auto; font-size:12px; font-family:'Zen Kaku Gothic New'; }
+.log-line{ margin-bottom:6px; padding:4px 8px; border-radius:8px; }
+.log-info{ background:rgba(102,211,192,0.1); color:var(--mint-deep); }
+.log-success{ background:rgba(102,211,192,0.15); color:#1a8f7a; }
+.log-error{ background:rgba(255,158,182,0.15); color:var(--sakura-deep); }
+.log-warning{ background:rgba(255,226,166,0.15); color:#c9a000; }
