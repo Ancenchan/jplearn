@@ -894,9 +894,36 @@ async function startParse(song, { rerun }) {
     toast('还没有配置 Worker 地址，暂时无法调用AI解析（见设置按钮）');
     return;
   }
+
+  const logWindow = el(`
+    <div class="ai-log-window">
+      <div class="log-header">
+        <span class="log-title">AI 解析日志</span>
+        <button class="log-close" type="button">×</button>
+      </div>
+      <div class="log-body" id="ai-log-content"></div>
+    </div>
+  `);
+  document.body.appendChild(logWindow);
+
+  function log(msg, type = 'info') {
+    const content = $('#ai-log-content');
+    if (!content) return;
+    const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
+    content.appendChild(line);
+    content.scrollTop = content.scrollHeight;
+  }
+
   const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
   if (btn) { btn.disabled = true; btn.textContent = '正在分析歌词结构… 30%'; }
+
+  log(`⏳ 开始解析「${song.title}」`);
+  log(`📤 发送请求到 Worker: ${workerBase}`);
+  log(`📊 模型: ${cfg.model}`);
+  log(`📝 歌词行数: ${song.lyrics_raw.length}`);
+
   try {
+    const startTime = Date.now();
     const res = await fetch(`${workerBase}/api/parse`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -909,15 +936,41 @@ async function startParse(song, { rerun }) {
         github_token: getGitHubToken()
       })
     });
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    log(`✅ 请求完成 (${elapsed}s)`, 'success');
+    log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
+
     if (btn) btn.textContent = '正在生成语法解析… 80%';
-    if (!res.ok) throw new Error(await res.text());
-    const { analysis_id } = await res.json();
-    toast('解析完成');
-    goto(`song/${song.id}`);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      log(`❌ 请求失败: ${errorText}`, 'error');
+      throw new Error(errorText);
+    }
+
+    const data = await res.json();
+    log(`📥 响应数据: ${JSON.stringify(data)}`, 'success');
+
+    if (data.analysis_id) {
+      log(`🎉 解析完成！analysis_id: ${data.analysis_id}`, 'success');
+      toast('解析完成');
+      setTimeout(() => {
+        logWindow.remove();
+        goto(`song/${song.id}`);
+      }, 1000);
+    } else {
+      log(`⚠️ 响应中没有 analysis_id`, 'warning');
+      throw new Error('解析结果不完整');
+    }
+
   } catch (err) {
+    log(`❌ 错误: ${err.message}`, 'error');
     toast(`解析失败：${err.message}`);
     if (btn) { btn.disabled = false; btn.textContent = rerun ? '✨ 用新版本重新解析' : '✨ 开始AI解析'; }
   }
+
+  $('#ai-log-window .log-close')?.addEventListener('click', () => logWindow.remove());
 }
 
 function openApiConfigDialog(onSaved) {
