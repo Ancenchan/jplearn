@@ -182,6 +182,7 @@ async function renderHome(query = '') {
     <div class="search-wrap">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7B2CF" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input id="search-input" placeholder="搜索歌曲 / 歌手 / 歌词关键词" value="${escapeHtml(query)}">
+      <button id="refresh-btn" class="refresh-btn" type="button" title="刷新歌曲列表"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7B2CF" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></button>
     </div>
     <div class="search-hint">
       <span class="chip" data-q="千本樱">🌸 千本樱</span>
@@ -203,6 +204,14 @@ async function renderHome(query = '') {
       $('#search-input').value = c.dataset.q;
       renderSongList(c.dataset.q);
     });
+  });
+
+  $('#refresh-btn').addEventListener('click', async () => {
+    const btn = $('#refresh-btn');
+    btn.classList.add('refreshing');
+    state.index = null;
+    await renderSongList(query);
+    btn.classList.remove('refreshing');
   });
 
   await renderSongList(query);
@@ -760,7 +769,11 @@ async function deleteSong(song) {
   if (!confirm(`确定要删除「${song.title}」吗？此操作不可撤销。`)) return;
 
   const songPath = `data/songs/${song.id}.json`;
+  const progressDiv = el(`<div class="delete-progress"><div class="progress-bar"><div class="progress-fill"></div></div><div class="progress-text">删除中…</div></div>`);
+  document.body.appendChild(progressDiv);
+
   try {
+    updateDeleteProgress(10, '获取文件信息');
     const getRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${songPath}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -773,6 +786,7 @@ async function deleteSong(song) {
     }
     const { sha } = await getRes.json();
 
+    updateDeleteProgress(30, '删除歌曲文件');
     const deleteRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${songPath}`, {
       method: 'DELETE',
       headers: {
@@ -792,6 +806,7 @@ async function deleteSong(song) {
       throw new Error(err.message || `删除失败 (HTTP ${deleteRes.status})`);
     }
 
+    updateDeleteProgress(50, '更新索引');
     const indexRes = await fetch('https://api.github.com/repos/Ancenchan/jplearn/contents/data/index.json', {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -829,12 +844,43 @@ async function deleteSong(song) {
       throw new Error(err.message || `更新 index.json 失败 (HTTP ${putRes.status})`);
     }
 
-    toast('已删除');
-    state.index = null;
-    location.reload();
+    updateDeleteProgress(70, '等待同步');
+    await waitForDeletion(song.id);
+
+    updateDeleteProgress(100, '删除完成');
+    setTimeout(() => {
+      progressDiv.remove();
+      state.index = null;
+      goto('');
+    }, 500);
   } catch (err) {
+    progressDiv.remove();
     toast(`删除失败：${err.message}`);
   }
+}
+
+function updateDeleteProgress(percent, text) {
+  const fill = document.querySelector('.progress-fill');
+  const textEl = document.querySelector('.progress-text');
+  if (fill) fill.style.width = `${percent}%`;
+  if (textEl) textEl.textContent = text;
+}
+
+async function waitForDeletion(songId) {
+  const maxAttempts = 30;
+  const delay = 1000;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch(`${DATA_BASE}/index.json`, { cache: 'no-cache' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const exists = data.songs && data.songs.some(s => s.id === songId);
+      if (!exists) return;
+      updateDeleteProgress(70 + Math.min(20, (i / maxAttempts) * 20), `等待同步… ${i + 1}/${maxAttempts}`);
+    } catch {}
+    await new Promise(r => setTimeout(r, delay));
+  }
+  throw new Error('同步超时，请手动刷新首页');
 }
 
 // ---------- AI 解析 ----------
