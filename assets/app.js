@@ -867,8 +867,8 @@ function updateDeleteProgress(percent, text) {
 }
 
 async function waitForDeletion(songId) {
-  const maxAttempts = 30;
-  const delay = 1000;
+  const maxAttempts = 10;
+  const delay = 500;
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const res = await fetch(`${DATA_BASE}/index.json`, { cache: 'no-cache' });
@@ -880,7 +880,6 @@ async function waitForDeletion(songId) {
     } catch {}
     await new Promise(r => setTimeout(r, delay));
   }
-  throw new Error('同步超时，请手动刷新首页');
 }
 
 // ---------- AI 解析 ----------
