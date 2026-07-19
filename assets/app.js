@@ -751,17 +751,78 @@ async function submitUtatenImport() {
 
 // ---------- 删除歌曲 ----------
 async function deleteSong(song) {
+  const token = getGitHubToken();
+  if (!token) {
+    toast('请先在右上角配置 GitHub Token');
+    openSettingsDialog();
+    return;
+  }
   if (!confirm(`确定要删除「${song.title}」吗？此操作不可撤销。`)) return;
-  const workerBase = getWorkerBase();
+
+  const songPath = `data/songs/${song.id}.json`;
   try {
-    const res = await fetch(`${workerBase}/api/songs/${song.id}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' }
+    const getRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${songPath}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app'
+      }
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `删除失败 (HTTP ${res.status})`);
+    if (!getRes.ok) {
+      throw new Error(`获取文件信息失败 (HTTP ${getRes.status})`);
     }
+    const { sha } = await getRes.json();
+
+    const deleteRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${songPath}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `删除歌曲: ${song.title}`,
+        sha,
+        branch: 'main'
+      })
+    });
+    if (!deleteRes.ok) {
+      const err = await deleteRes.json().catch(() => ({}));
+      throw new Error(err.message || `删除失败 (HTTP ${deleteRes.status})`);
+    }
+
+    const indexRes = await fetch('https://api.github.com/repos/Ancenchan/jplearn/contents/data/index.json', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app'
+      }
+    });
+    if (indexRes.ok) {
+      const indexData = await indexRes.json();
+      const indexContent = JSON.parse(atob(indexData.content.replace(/\n/g, '')));
+      const before = indexContent.songs.length;
+      indexContent.songs = indexContent.songs.filter(s => s.id !== song.id);
+      if (indexContent.songs.length !== before) {
+        await fetch('https://api.github.com/repos/Ancenchan/jplearn/contents/data/index.json', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'jplearn-app',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `index: 删除 ${song.id}`,
+            content: btoa(unescape(encodeURIComponent(JSON.stringify(indexContent, null, 2)))),
+            sha: indexData.sha,
+            branch: 'main'
+          })
+        });
+      }
+    }
+
     toast('已删除');
     state.index = null;
     goto('');
