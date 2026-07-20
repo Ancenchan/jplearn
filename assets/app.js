@@ -1002,7 +1002,7 @@ async function startParse(song, { rerun }) {
     if (btn) btn.textContent = '正在生成语法解析… 80%';
 
     if (!res.ok) {
-      let errorText;
+let errorText;
       try {
         const jsonData = await res.json();
         errorText = JSON.stringify(jsonData);
@@ -1020,7 +1020,6 @@ async function startParse(song, { rerun }) {
       } else if (errorText.includes('429')) {
         log(`💡 建议：API 请求频率超限，请稍后重试或检查 API 配额。`, 'warning');
       }
-      
       throw new Error(errorText);
     }
 
