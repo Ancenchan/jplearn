@@ -633,7 +633,7 @@ async function startAiTokenize(song) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${cfg.apiKey}`
       },
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 8000 }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -1133,7 +1133,7 @@ async function testApiConnection(apiUrl, apiKey, model, resultEl) {
       body: JSON.stringify({ 
         model, 
         messages: [{ role: 'user', content: '请返回 "OK" 两个字符，不要任何其他内容。' }],
-        max_tokens: 10
+        max_tokens: 100
       }),
       signal: controller.signal
     });

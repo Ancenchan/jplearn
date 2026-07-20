@@ -331,7 +331,8 @@ async function callAI(apiUrl, apiKey, model, prompt) {
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 8000
       }),
       signal: controller.signal
     });
