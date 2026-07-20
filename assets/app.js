@@ -657,6 +657,11 @@ async function startAiTokenize(song) {
     log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
     log(`📥 响应预览: ${JSON.stringify(data).slice(0, 500)}${JSON.stringify(data).length > 500 ? '...' : ''}`, 'info');
     
+    const finishReason = data.choices?.[0]?.finish_reason || '';
+    if (finishReason === 'length') {
+      log(`⚠️ 响应被截断 (finish_reason: length)，请求数量可能不足`, 'warning');
+    }
+    
     const text = data.choices?.[0]?.message?.content 
       || data?.result 
       || data?.content 
@@ -682,6 +687,10 @@ async function startAiTokenize(song) {
     } catch (e) {
       log(`❌ JSON 解析失败: ${e.message}`, 'error');
       log(`📝 原始内容: ${cleaned.slice(0, 200)}${cleaned.length > 200 ? '...' : ''}`, 'error');
+      if (finishReason === 'length') {
+        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型；3) 检查max_tokens设置`, 'warning');
+        throw new Error(`JSON 解析失败（响应被截断）：${e.message}`);
+      }
       throw new Error(`JSON 解析失败: ${e.message}`);
     }
 
