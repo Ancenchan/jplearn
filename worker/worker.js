@@ -343,7 +343,17 @@ async function callAI(apiUrl, apiKey, model, prompt) {
     }
 
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || '';
+    const text = data.choices?.[0]?.message?.content 
+      || data?.result 
+      || data?.content 
+      || data?.response 
+      || data?.output?.text 
+      || data?.output 
+      || '';
+    if (!text) {
+      throw new Error(`AI 返回内容为空。响应结构: ${JSON.stringify(Object.keys(data))}, 完整响应: ${JSON.stringify(data)}`);
+    }
+    return text;
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {

@@ -655,11 +655,20 @@ async function startAiTokenize(song) {
 
     const data = await res.json();
     log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
+    log(`📥 响应预览: ${JSON.stringify(data).slice(0, 500)}${JSON.stringify(data).length > 500 ? '...' : ''}`, 'info');
     
-    const text = data.choices?.[0]?.message?.content || data?.result || '';
+    const text = data.choices?.[0]?.message?.content 
+      || data?.result 
+      || data?.content 
+      || data?.response 
+      || data?.output?.text 
+      || data?.output 
+      || '';
     if (!text) {
       log('❌ AI 返回内容为空', 'error');
-      throw new Error('AI 返回内容为空');
+      log('💡 响应完整结构:', 'warning');
+      log(JSON.stringify(data, null, 2), 'warning');
+      throw new Error('AI 返回内容为空，请检查API响应格式是否匹配。当前支持的格式：choices[0].message.content、result、content、response、output.text');
     }
     
     log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
@@ -1070,11 +1079,11 @@ function openApiConfigDialog(onSaved) {
       <div class="field"><label>API 地址</label><input id="cfg-url" value="${escapeHtml(cfg.apiUrl)}" placeholder="https://api.openai.com/v1/chat/completions"></div>
       <div class="field"><label>API Key</label><input id="cfg-key" type="password" value="${escapeHtml(cfg.apiKey)}"></div>
       <div class="field"><label>模型名称</label><input id="cfg-model" value="${escapeHtml(cfg.model)}" placeholder="例如 gpt-4o / deepseek-chat"></div>
+      <div id="cfg-test-result" style="min-height:24px;font-size:12px;color:var(--ink-soft);text-align:center;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;">
-        <button class="parse-btn" id="cfg-test" style="flex:1;">测试连接</button>
-        <button class="parse-btn" id="cfg-save" style="flex:1;">保存并继续</button>
+        <button class="parse-btn" id="cfg-save">保存并继续</button>
+        <button type="button" id="cfg-test" style="padding:12px 16px;border:2px solid rgba(102,211,192,0.36);border-radius:14px;background:rgba(102,211,192,0.12);color:var(--mint-deep);font-family:'Zen Maru Gothic';font-weight:700;font-size:12.5px;cursor:pointer;">测试连接</button>
       </div>
-      <div id="cfg-test-result" style="margin-top:8px;font-size:12px;color:#837E9E;min-height:18px;"></div>
     </div>
   `);
   document.body.appendChild(wrap);
@@ -1084,71 +1093,12 @@ function openApiConfigDialog(onSaved) {
   };
 
   $('#cfg-close', wrap).addEventListener('click', closeDialog);
-  $('#cfg-test', wrap).addEventListener('click', async () => {
-    const btn = $('#cfg-test', wrap);
-    const result = $('#cfg-test-result', wrap);
-    const apiUrl = $('#cfg-url', wrap).value.trim();
-    const apiKey = $('#cfg-key', wrap).value.trim();
+  $('#cfg-test', wrap).addEventListener('click', () => {
+    const url = $('#cfg-url', wrap).value.trim();
+    const key = $('#cfg-key', wrap).value.trim();
     const model = $('#cfg-model', wrap).value.trim();
-    
-    if (!apiUrl || !apiKey || !model) {
-      result.textContent = '请先填写完整的 API 地址、Key 和模型名称';
-      result.style.color = '#E8637E';
-      return;
-    }
-    
-    btn.disabled = true;
-    btn.textContent = '测试中…';
-    result.textContent = '正在发送测试请求…';
-    result.style.color = '#837E9E';
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({ 
-          model, 
-          messages: [{ role: 'user', content: '请回复"OK"即可' }],
-          max_tokens: 10
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        result.textContent = `❌ 连接失败 (${res.status}): ${errData.error?.message || '未知错误'}`;
-        result.style.color = '#E8637E';
-      } else {
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content || '';
-        if (text) {
-          result.textContent = `✅ 连接成功！响应: ${text.trim().slice(0, 30)}`;
-          result.style.color = '#2FAE97';
-        } else {
-          result.textContent = '❌ 连接成功但返回内容为空';
-          result.style.color = '#E8637E';
-        }
-      }
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        result.textContent = '⏱️ 请求超时（10秒），请检查网络连接';
-      } else {
-        result.textContent = `❌ 请求失败: ${err.message}`;
-      }
-      result.style.color = '#E8637E';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '测试连接';
-    }
+    testApiConnection(url, key, model, $('#cfg-test-result', wrap));
   });
-  
   $('#cfg-save', wrap).addEventListener('click', () => {
     setApiConfig({
       apiUrl: $('#cfg-url', wrap).value.trim(),
@@ -1158,6 +1108,101 @@ function openApiConfigDialog(onSaved) {
     closeDialog();
     onSaved();
   });
+}
+
+async function testApiConnection(apiUrl, apiKey, model, resultEl) {
+  if (!apiUrl || !apiKey || !model) {
+    if (resultEl) resultEl.innerHTML = '<span style="color:#E8637E;">请填写完整配置后再测试</span>';
+    return;
+  }
+
+  if (resultEl) {
+    resultEl.innerHTML = '<span style="color:#8B78E8;">测试中…</span>';
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({ 
+        model, 
+        messages: [{ role: 'user', content: '请返回 "OK" 两个字符，不要任何其他内容。' }],
+        max_tokens: 10
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    const contentType = res.headers.get('Content-Type') || '';
+    const rawText = await res.text();
+    console.log('API测试 - HTTP状态:', res.status, res.statusText);
+    console.log('API测试 - Content-Type:', contentType);
+    console.log('API测试 - 原始响应:', rawText);
+
+    if (!res.ok) {
+      let errorDetail = '';
+      try {
+        const errData = JSON.parse(rawText);
+        errorDetail = errData.error?.message || errData.message || '';
+      } catch {
+        errorDetail = rawText.slice(0, 100);
+      }
+      if (resultEl) {
+        resultEl.innerHTML = `<span style="color:#E8637E;">❌ 连接失败 (${res.status}): ${errorDetail || '服务器返回错误'}</span>`;
+      }
+      return;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      if (resultEl) {
+        resultEl.innerHTML = `<span style="color:#E8637E;">❌ 响应不是JSON格式</span>`;
+        resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">Content-Type: ${contentType}</span>`;
+        resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">原始响应: "${rawText.slice(0, 100)}"</span>`;
+      }
+      return;
+    }
+
+    const text = data.choices?.[0]?.message?.content 
+      || data?.result 
+      || data?.content 
+      || data?.response 
+      || data?.output?.text 
+      || data?.output 
+      || data?.candidates?.[0]?.content?.parts?.[0]?.text 
+      || '';
+
+    if (!text) {
+      if (resultEl) {
+        resultEl.innerHTML = `<span style="color:#E8637E;">❌ 连接成功但返回内容为空</span>`;
+        resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">响应结构: ${JSON.stringify(Object.keys(data))}</span>`;
+        resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">原始响应预览: "${rawText.slice(0, 200)}"</span>`;
+      }
+    } else {
+      if (resultEl) {
+        resultEl.innerHTML = `<span style="color:#2FAE97;">✅ 连接成功！返回内容: "${text.trim().slice(0, 50)}"</span>`;
+      }
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      if (resultEl) resultEl.innerHTML = '<span style="color:#E8637E;">❌ 请求超时（10秒）</span>';
+    } else {
+      if (resultEl) resultEl.innerHTML = `<span style="color:#E8637E;">❌ 连接失败: ${err.message}</span>`;
+      if (err.message.includes('CORS')) {
+        resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">💡 提示：可能遇到CORS跨域限制，需要通过Worker代理</span>`;
+      }
+    }
+  }
 }
 
 function openSettingsDialog() {
