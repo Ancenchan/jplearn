@@ -1070,7 +1070,11 @@ function openApiConfigDialog(onSaved) {
       <div class="field"><label>API 地址</label><input id="cfg-url" value="${escapeHtml(cfg.apiUrl)}" placeholder="https://api.openai.com/v1/chat/completions"></div>
       <div class="field"><label>API Key</label><input id="cfg-key" type="password" value="${escapeHtml(cfg.apiKey)}"></div>
       <div class="field"><label>模型名称</label><input id="cfg-model" value="${escapeHtml(cfg.model)}" placeholder="例如 gpt-4o / deepseek-chat"></div>
-      <button class="parse-btn" id="cfg-save">保存并继续</button>
+      <div style="display:flex;gap:8px;">
+        <button class="parse-btn" id="cfg-test" style="flex:1;">测试连接</button>
+        <button class="parse-btn" id="cfg-save" style="flex:1;">保存并继续</button>
+      </div>
+      <div id="cfg-test-result" style="margin-top:8px;font-size:12px;color:#837E9E;min-height:18px;"></div>
     </div>
   `);
   document.body.appendChild(wrap);
@@ -1080,6 +1084,71 @@ function openApiConfigDialog(onSaved) {
   };
 
   $('#cfg-close', wrap).addEventListener('click', closeDialog);
+  $('#cfg-test', wrap).addEventListener('click', async () => {
+    const btn = $('#cfg-test', wrap);
+    const result = $('#cfg-test-result', wrap);
+    const apiUrl = $('#cfg-url', wrap).value.trim();
+    const apiKey = $('#cfg-key', wrap).value.trim();
+    const model = $('#cfg-model', wrap).value.trim();
+    
+    if (!apiUrl || !apiKey || !model) {
+      result.textContent = '请先填写完整的 API 地址、Key 和模型名称';
+      result.style.color = '#E8637E';
+      return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = '测试中…';
+    result.textContent = '正在发送测试请求…';
+    result.style.color = '#837E9E';
+    
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({ 
+          model, 
+          messages: [{ role: 'user', content: '请回复"OK"即可' }],
+          max_tokens: 10
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        result.textContent = `❌ 连接失败 (${res.status}): ${errData.error?.message || '未知错误'}`;
+        result.style.color = '#E8637E';
+      } else {
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        if (text) {
+          result.textContent = `✅ 连接成功！响应: ${text.trim().slice(0, 30)}`;
+          result.style.color = '#2FAE97';
+        } else {
+          result.textContent = '❌ 连接成功但返回内容为空';
+          result.style.color = '#E8637E';
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        result.textContent = '⏱️ 请求超时（10秒），请检查网络连接';
+      } else {
+        result.textContent = `❌ 请求失败: ${err.message}`;
+      }
+      result.style.color = '#E8637E';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '测试连接';
+    }
+  });
+  
   $('#cfg-save', wrap).addEventListener('click', () => {
     setApiConfig({
       apiUrl: $('#cfg-url', wrap).value.trim(),
