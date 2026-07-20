@@ -623,14 +623,20 @@ async function startAiTokenize(song) {
     log(`📝 歌词行数: ${song.lyrics_raw.length}`);
 
     const prompt = `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：\n\n${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}\n\n请只输出一个 JSON 对象，不要任何解释文字，结构如下：\n{\n  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"...","grammar_analysis":[{"word":"新しい","base":"新しい","pos":"形容词连体形","role":"修饰「ミライ」"},{"word":"ミライ","base":"ミライ","pos":"名词","role":"片假名写法，意为'未来'；宾语的核心名词"},{"word":"を","base":"を","pos":"格助词","role":"提示「思い描く新しいミライ」整个名词短语为「探してた」的宾语"}]}],\n  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[\n    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}\n  ]}]\n}\n其中 grammar_analysis 是对整个句子的语法拆解，对每个词（或最小单位）给出原形、词性，以及它在句中的语法作用（修饰谁、是主语/宾语/谓语等）。请用中文描述 role 字段。`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${cfg.apiKey}`
       },
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     log(`✅ 请求完成 (${elapsed}s)`, 'success');
@@ -688,8 +694,14 @@ async function startAiTokenize(song) {
     log(`🎉 本地渲染完成`, 'success');
     toast('AI 解析完成（临时视图），点击任意词查看释义');
   } catch (err) {
-    log(`❌ 错误: ${err.message}`, 'error');
-    toast(`AI 解析失败：${err.message}`);
+    if (err.name === 'AbortError') {
+      log(`❌ 请求超时: AI接口在60秒内未响应`, 'error');
+      log(`💡 建议：请稍后重试，或检查网络连接`, 'warning');
+      toast(`AI 解析超时：请稍后重试`);
+    } else {
+      log(`❌ 错误: ${err.message}`, 'error');
+      toast(`AI 解析失败：${err.message}`);
+    }
   } finally {
     btn.disabled = false; btn.textContent = '✨ AI 解析（切词+翻译）';
     logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
