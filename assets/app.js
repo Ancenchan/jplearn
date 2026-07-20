@@ -182,6 +182,7 @@ async function renderHome(query = '') {
     <div class="search-wrap">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7B2CF" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input id="search-input" placeholder="搜索歌曲 / 歌手 / 歌词关键词" value="${escapeHtml(query)}">
+      <button id="refresh-btn" class="refresh-btn" type="button" title="刷新歌曲列表"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7B2CF" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></button>
     </div>
     <div class="search-hint">
       <span class="chip" data-q="千本樱">🌸 千本樱</span>
@@ -203,6 +204,14 @@ async function renderHome(query = '') {
       $('#search-input').value = c.dataset.q;
       renderSongList(c.dataset.q);
     });
+  });
+
+  $('#refresh-btn').addEventListener('click', async () => {
+    const btn = $('#refresh-btn');
+    btn.classList.add('refreshing');
+    state.index = null;
+    await renderSongList(query);
+    btn.classList.remove('refreshing');
   });
 
   await renderSongList(query);
@@ -287,9 +296,14 @@ async function renderSongDetail(songId) {
   app.innerHTML = `
     <div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div>
     <div class="song-head">
-      <div class="title">${escapeHtml(song.title)}</div>
-      <div class="artist">${escapeHtml(song.artist)}</div>
-      <div class="version-tag">🍡 ${escapeHtml(analysis.ai_model)}解析版 · ${song.analysis_versions.length}个版本</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="min-width:0;">
+          <div class="title">${escapeHtml(song.title)}</div>
+          <div class="artist">${escapeHtml(song.artist)}</div>
+          <div class="version-tag">🍡 ${escapeHtml(analysis.ai_model)}解析版 · ${song.analysis_versions.length}个版本</div>
+        </div>
+        <button class="delete-song-btn" id="delete-song-btn" title="删除歌曲">🗑️</button>
+      </div>
     </div>
     <button class="parse-btn" id="reparse-btn">✨ 用新版本重新解析</button>
     <div class="song-detail-layout">
@@ -311,6 +325,7 @@ async function renderSongDetail(songId) {
   renderLyricsBlock(analysis);
 
   $('#reparse-btn').addEventListener('click', () => startParse(song, { rerun: true }));
+  $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
 function renderRawLyricsBlock(lines, furiganaLines) {
@@ -543,9 +558,14 @@ function renderEmptyState(song) {
   app.innerHTML = `
     <div class="back-row" onclick="goto('')">‹ &nbsp;返回搜索</div>
     <div class="song-head" style="background: linear-gradient(135deg, rgba(102,211,192,0.14), rgba(255,158,182,0.14));">
-      <div class="title">${escapeHtml(song.title)}</div>
-      <div class="artist">${escapeHtml(song.artist || '未知歌手')}</div>
-      <div class="version-tag empty">🌱 还没有解析版本</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="min-width:0;">
+          <div class="title">${escapeHtml(song.title)}</div>
+          <div class="artist">${escapeHtml(song.artist || '未知歌手')}</div>
+          <div class="version-tag empty">🌱 还没有解析版本</div>
+        </div>
+        <button class="delete-song-btn" id="delete-song-btn" title="删除歌曲">🗑️</button>
+      </div>
     </div>
     <button class="parse-btn" id="start-parse-btn">✨ AI 解析（切词+翻译）</button>
     <div class="song-detail-layout">
@@ -562,6 +582,7 @@ function renderEmptyState(song) {
     </div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startAiTokenizeAndParse(song));
+  $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
 // 在未解析状态下调用 AI 进行分词和翻译（临时，不写入 GitHub）
@@ -571,9 +592,36 @@ async function startAiTokenize(song) {
     openApiConfigDialog(() => startAiTokenize(song));
     return;
   }
+
+  const logWindow = el(`
+    <div class="ai-log-window">
+      <div class="log-header">
+        <span class="log-title">AI 解析日志</span>
+        <button class="log-close" type="button">×</button>
+      </div>
+      <div class="log-body" id="ai-log-content"></div>
+    </div>
+  `);
+  document.body.appendChild(logWindow);
+
+  function log(msg, type = 'info') {
+    const content = $('#ai-log-content');
+    if (!content) return;
+    const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
+    content.appendChild(line);
+    content.scrollTop = content.scrollHeight;
+    console.log(`[AI解析] ${msg}`);
+  }
+
   const btn = $('#start-parse-btn');
   btn.disabled = true; btn.textContent = '🤖 AI 解析中…';
   try {
+    const startTime = Date.now();
+    log(`⏳ 开始解析「${song.title}」`);
+    log(`📤 发送请求到: ${cfg.apiUrl}`);
+    log(`📊 模型: ${cfg.model}`);
+    log(`📝 歌词行数: ${song.lyrics_raw.length}`);
+
     const prompt = `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：\n\n${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}\n\n请只输出一个 JSON 对象，不要任何解释文字，结构如下：\n{\n  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"...","grammar_analysis":[{"word":"新しい","base":"新しい","pos":"形容词连体形","role":"修饰「ミライ」"},{"word":"ミライ","base":"ミライ","pos":"名词","role":"片假名写法，意为'未来'；宾语的核心名词"},{"word":"を","base":"を","pos":"格助词","role":"提示「思い描く新しいミライ」整个名词短语为「探してた」的宾语"}]}],\n  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[\n    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}\n  ]}]\n}\n其中 grammar_analysis 是对整个句子的语法拆解，对每个词（或最小单位）给出原形、词性，以及它在句中的语法作用（修饰谁、是主语/宾语/谓语等）。请用中文描述 role 字段。`;
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',
@@ -583,38 +631,70 @@ async function startAiTokenize(song) {
       },
       body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }] })
     });
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    log(`✅ 请求完成 (${elapsed}s)`, 'success');
+    log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
+
     if (!res.ok) {
       let errorDetail = '';
       try {
         const errData = await res.json();
         errorDetail = errData.error?.message || errData.message || '';
       } catch {}
-      throw new Error(`AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`);
+      const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
+      log(`❌ ${errMsg}`, 'error');
+      throw new Error(errMsg);
     }
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || data?.result || '';
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
 
-    // 期望 parsed 为 { lines: [...], sentences: [...] }
+    const data = await res.json();
+    log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
+    
+    const text = data.choices?.[0]?.message?.content || data?.result || '';
+    if (!text) {
+      log('❌ AI 返回内容为空', 'error');
+      throw new Error('AI 返回内容为空');
+    }
+    
+    log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
+    log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
+
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+      log(`✅ JSON 解析成功`, 'success');
+    } catch (e) {
+      log(`❌ JSON 解析失败: ${e.message}`, 'error');
+      log(`📝 原始内容: ${cleaned.slice(0, 200)}${cleaned.length > 200 ? '...' : ''}`, 'error');
+      throw new Error(`JSON 解析失败: ${e.message}`);
+    }
+
     const analysis = { lines: [], sentences: [] };
     if (parsed.lines) {
       parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', sentence_id: l.sentence_id, translation_cn: l.translation_cn, words: l.words || [] }));
       if (parsed.sentences) analysis.sentences = parsed.sentences;
+      log(`✅ 解析完成: ${analysis.lines.length} 行, ${analysis.sentences.length} 句子`, 'success');
     } else if (Array.isArray(parsed)) {
       parsed.forEach((words, idx) => analysis.lines.push({ index: idx, text: song.lyrics_raw[idx] || '', words }));
+      log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
     } else {
+      log('❌ AI 返回格式不符合预期', 'error');
       throw new Error('AI 返回格式不符合预期');
     }
 
     state.currentAnalysis = analysis;
     renderLyricsBlock(analysis);
+    log(`🎉 本地渲染完成`, 'success');
     toast('AI 解析完成（临时视图），点击任意词查看释义');
   } catch (err) {
+    log(`❌ 错误: ${err.message}`, 'error');
     toast(`AI 解析失败：${err.message}`);
   } finally {
     btn.disabled = false; btn.textContent = '✨ AI 解析（切词+翻译）';
+    logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
   }
+  return logWindow;
 }
 
 // 执行 AI 解析（前端临时渲染）和调用 Worker 发起完整解析并保存到 GitHub（若已配置）
@@ -624,8 +704,7 @@ async function startAiTokenizeAndParse(song) {
     openApiConfigDialog(() => startAiTokenizeAndParse(song));
     return;
   }
-  // 先做本地临时解析并渲染（包含分词和句子翻译）
-  await startAiTokenize(song);
+  const logWindow = await startAiTokenize(song);
 
   const workerBase = getWorkerBase();
   if (!workerBase) {
@@ -633,7 +712,7 @@ async function startAiTokenizeAndParse(song) {
     return;
   }
 
-  // 同步发起写入解析的请求（startParse 会处理进度 UI 和错误反馈）
+  if (logWindow) logWindow.remove();
   startParse(song, { rerun: false });
 }
 
@@ -737,6 +816,130 @@ async function submitUtatenImport() {
   }
 }
 
+// ---------- 删除歌曲 ----------
+async function deleteSong(song) {
+  const token = getGitHubToken();
+  if (!token) {
+    toast('请先在右上角配置 GitHub Token');
+    openSettingsDialog();
+    return;
+  }
+  if (!confirm(`确定要删除「${song.title}」吗？此操作不可撤销。`)) return;
+
+  const songPath = `data/songs/${song.id}.json`;
+  const progressDiv = el(`<div class="delete-progress"><div class="progress-bar"><div class="progress-fill"></div></div><div class="progress-text">删除中…</div></div>`);
+  document.body.appendChild(progressDiv);
+
+  try {
+    updateDeleteProgress(10, '获取文件信息');
+    const getRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${songPath}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app'
+      }
+    });
+    if (!getRes.ok) {
+      throw new Error(`获取文件信息失败 (HTTP ${getRes.status})`);
+    }
+    const { sha } = await getRes.json();
+
+    updateDeleteProgress(30, '删除歌曲文件');
+    const deleteRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${songPath}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `删除歌曲: ${song.title}`,
+        sha,
+        branch: 'main'
+      })
+    });
+    if (!deleteRes.ok) {
+      const err = await deleteRes.json().catch(() => ({}));
+      throw new Error(err.message || `删除失败 (HTTP ${deleteRes.status})`);
+    }
+
+    updateDeleteProgress(50, '更新索引');
+    const indexRes = await fetch('https://api.github.com/repos/Ancenchan/jplearn/contents/data/index.json', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app'
+      }
+    });
+    if (!indexRes.ok) {
+      throw new Error(`获取 index.json 失败 (HTTP ${indexRes.status})`);
+    }
+    const indexData = await indexRes.json();
+    const indexContent = JSON.parse(decodeURIComponent(escape(atob(indexData.content.replace(/\n/g, '')))));
+    const before = indexContent.songs.length;
+    indexContent.songs = indexContent.songs.filter(s => s.id !== song.id);
+    if (indexContent.songs.length === before) {
+      throw new Error('index.json 中未找到该歌曲记录');
+    }
+    const putRes = await fetch('https://api.github.com/repos/Ancenchan/jplearn/contents/data/index.json', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `index: 删除 ${song.id}`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(indexContent, null, 2)))),
+        sha: indexData.sha,
+        branch: 'main'
+      })
+    });
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `更新 index.json 失败 (HTTP ${putRes.status})`);
+    }
+
+    updateDeleteProgress(70, '等待同步');
+    await waitForDeletion(song.id);
+
+    updateDeleteProgress(100, '删除完成');
+    setTimeout(() => {
+      progressDiv.remove();
+      state.index = null;
+      goto('');
+    }, 500);
+  } catch (err) {
+    progressDiv.remove();
+    toast(`删除失败：${err.message}`);
+  }
+}
+
+function updateDeleteProgress(percent, text) {
+  const fill = document.querySelector('.progress-fill');
+  const textEl = document.querySelector('.progress-text');
+  if (fill) fill.style.width = `${percent}%`;
+  if (textEl) textEl.textContent = text;
+}
+
+async function waitForDeletion(songId) {
+  const maxAttempts = 10;
+  const delay = 500;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch(`${DATA_BASE}/index.json`, { cache: 'no-cache' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const exists = data.songs && data.songs.some(s => s.id === songId);
+      if (!exists) return;
+      updateDeleteProgress(70 + Math.min(20, (i / maxAttempts) * 20), `等待同步… ${i + 1}/${maxAttempts}`);
+    } catch {}
+    await new Promise(r => setTimeout(r, delay));
+  }
+}
+
 // ---------- AI 解析 ----------
 async function startParse(song, { rerun }) {
   const cfg = getApiConfig();
@@ -749,9 +952,36 @@ async function startParse(song, { rerun }) {
     toast('还没有配置 Worker 地址，暂时无法调用AI解析（见设置按钮）');
     return;
   }
+
+  const logWindow = el(`
+    <div class="ai-log-window">
+      <div class="log-header">
+        <span class="log-title">AI 解析日志</span>
+        <button class="log-close" type="button">×</button>
+      </div>
+      <div class="log-body" id="ai-log-content"></div>
+    </div>
+  `);
+  document.body.appendChild(logWindow);
+
+  function log(msg, type = 'info') {
+    const content = $('#ai-log-content');
+    if (!content) return;
+    const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
+    content.appendChild(line);
+    content.scrollTop = content.scrollHeight;
+  }
+
   const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
   if (btn) { btn.disabled = true; btn.textContent = '正在分析歌词结构… 30%'; }
+
+  log(`⏳ 开始解析「${song.title}」`);
+  log(`📤 发送请求到 Worker: ${workerBase}`);
+  log(`📊 模型: ${cfg.model}`);
+  log(`📝 歌词行数: ${song.lyrics_raw.length}`);
+
   try {
+    const startTime = Date.now();
     const res = await fetch(`${workerBase}/api/parse`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -764,15 +994,58 @@ async function startParse(song, { rerun }) {
         github_token: getGitHubToken()
       })
     });
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    log(`✅ 请求完成 (${elapsed}s)`, 'success');
+    log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
+
     if (btn) btn.textContent = '正在生成语法解析… 80%';
-    if (!res.ok) throw new Error(await res.text());
-    const { analysis_id } = await res.json();
-    toast('解析完成');
-    goto(`song/${song.id}`);
+
+    if (!res.ok) {
+      let errorText;
+      try {
+        const jsonData = await res.json();
+        errorText = JSON.stringify(jsonData);
+      } catch {
+        errorText = await res.text();
+      }
+      log(`❌ 请求失败: ${errorText}`, 'error');
+      
+      if (errorText.includes('504') || errorText.includes('超时')) {
+        log(`💡 建议：超时通常是由于 AI 模型响应过慢导致的。请尝试：1) 使用更快的模型（如 gemini-1.5-flash）；2) 减少歌词行数；3) 稍后重试。`, 'warning');
+      } else if (errorText.includes('524')) {
+        log(`💡 建议：Cloudflare 524 错误表示后端 API 请求超时。这通常是 AI 服务端响应过慢导致的，请稍后重试。`, 'warning');
+      } else if (errorText.includes('401') || errorText.includes('Unauthorized')) {
+        log(`💡 建议：请检查 API Key 是否正确配置。`, 'warning');
+      } else if (errorText.includes('429')) {
+        log(`💡 建议：API 请求频率超限，请稍后重试或检查 API 配额。`, 'warning');
+      }
+      
+      throw new Error(errorText);
+    }
+
+    const data = await res.json();
+    log(`📥 响应数据: ${JSON.stringify(data)}`, 'success');
+
+    if (data.analysis_id) {
+      log(`🎉 解析完成！analysis_id: ${data.analysis_id}`, 'success');
+      toast('解析完成');
+      setTimeout(() => {
+        logWindow.remove();
+        goto(`song/${song.id}`);
+      }, 1000);
+    } else {
+      log(`⚠️ 响应中没有 analysis_id`, 'warning');
+      throw new Error('解析结果不完整');
+    }
+
   } catch (err) {
+    log(`❌ 错误: ${err.message}`, 'error');
     toast(`解析失败：${err.message}`);
     if (btn) { btn.disabled = false; btn.textContent = rerun ? '✨ 用新版本重新解析' : '✨ 开始AI解析'; }
   }
+
+  $('#ai-log-window .log-close')?.addEventListener('click', () => logWindow.remove());
 }
 
 function openApiConfigDialog(onSaved) {

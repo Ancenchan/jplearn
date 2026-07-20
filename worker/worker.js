@@ -319,21 +319,38 @@ function tryParseJSON(text) {
 }
 
 async function callAI(apiUrl, apiKey, model, prompt) {
-  const res = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  if (!res.ok) throw new Error(`AI 接口调用失败: ${res.status}`);
-  const data = await res.json();
-  // 兼容 OpenAI Compatible 格式
-  return data.choices?.[0]?.message?.content || '';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(`${res.status} ${res.statusText}: ${errorData.error?.message || errorData.message || '未知错误'}`);
+    }
+
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('504 超时: AI接口在60秒内未响应，请稍后重试或尝试使用更快的模型');
+    }
+    throw err;
+  }
 }
 
 // ---------- 3. 手动创建歌曲 ----------

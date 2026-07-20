@@ -59,6 +59,15 @@ body{
 }
 .search-wrap input:focus{ border-color: var(--sakura); }
 .search-wrap svg{ position:absolute; left:16px; top:50%; transform:translateY(-50%); }
+.refresh-btn{
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  border:none; background:none; cursor:pointer; padding:4px; border-radius:6px;
+  transition:background .15s;
+}
+.refresh-btn:hover{ background:rgba(0,0,0,0.06); }
+.refresh-btn svg{ position:static; transform:none; }
+.refresh-btn.refreshing svg{ animation: spin 1s linear infinite; }
+@keyframes spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
 .search-hint{ font-size:11px; color:var(--ink-soft); margin: -14px 6px 20px; display:flex; gap:10px; flex-wrap:wrap; }
 .chip{ background: var(--card); border:1px solid var(--paper-line); padding:2px 9px; border-radius:999px; font-size:11px; cursor:pointer; }
 
@@ -120,6 +129,12 @@ body{
   display:flex; align-items:center; justify-content:center; gap:8px;
 }
 .parse-btn:disabled{ opacity:.6; cursor:default; }
+.delete-song-btn{
+  border:none; background:rgba(255,255,255,0.6); cursor:pointer;
+  font-size:16px; padding:6px 10px; border-radius:10px;
+  transition: background .15s;
+}
+.delete-song-btn:hover{ background:#fff; color:var(--sakura-deep); }
 .local-vocab-btn{
   width:100%; padding:11px; border:2px solid rgba(102,211,192,0.36); border-radius:14px;
   background:rgba(102,211,192,0.12); color:var(--mint-deep); font-family:'Zen Maru Gothic';
@@ -228,3 +243,37 @@ ruby rt{ font-size:9px; color: var(--ink-soft); font-family:'Zen Kaku Gothic New
   background: var(--ink); color:#fff; font-size:12.5px; padding:10px 18px; border-radius:999px;
   box-shadow: 0 10px 24px rgba(51,47,75,0.3); font-family:'Zen Kaku Gothic New'; z-index:100;
 }
+
+.delete-progress{
+  position:fixed; left:0; top:0; right:0; bottom:0;
+  background:rgba(255,249,244,0.92); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:300;
+}
+.progress-bar{
+  width:220px; height:8px; background:#F1E7DD; border-radius:999px; overflow:hidden;
+}
+.progress-fill{
+  height:100%; background:linear-gradient(90deg, var(--sakura), var(--lavender));
+  width:0%; transition:width .3s ease;
+}
+.progress-text{
+  margin-top:16px; font-size:13px; color:var(--ink-soft); font-family:'Zen Kaku Gothic New';
+}
+
+.ai-log-window{
+  position:fixed; left:16px; right:16px; bottom:16px; max-width:448px; margin:0 auto;
+  background:rgba(255,255,255,0.96); border-radius:20px; box-shadow:0 16px 48px rgba(0,0,0,0.12);
+  z-index:300; max-height:60vh; display:flex; flex-direction:column;
+}
+.log-header{
+  display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
+  border-bottom:1px solid var(--paper-line);
+}
+.log-title{ font-family:'Zen Maru Gothic'; font-weight:700; font-size:13px; color:var(--ink); }
+.log-close{ border:none; background:none; font-size:20px; color:var(--ink-soft); cursor:pointer; line-height:1; padding:0; }
+.log-body{ flex:1; padding:12px 16px; overflow-y:auto; font-size:12px; font-family:'Zen Kaku Gothic New'; }
+.log-line{ margin-bottom:6px; padding:4px 8px; border-radius:8px; }
+.log-info{ background:rgba(102,211,192,0.1); color:var(--mint-deep); }
+.log-success{ background:rgba(102,211,192,0.15); color:#1a8f7a; }
+.log-error{ background:rgba(255,158,182,0.15); color:var(--sakura-deep); }
+.log-warning{ background:rgba(255,226,166,0.15); color:#c9a000; }
