@@ -77,6 +77,92 @@ async function fetchJSON(path) {
   return res.json();
 }
 
+function repairBrokenJSON(raw) {
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch {}
+  
+  let cleaned = raw.replace(/```json|```/g, '').trim();
+  
+  try { return JSON.parse(cleaned); } catch {}
+  
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let start = -1;
+  let isArray = false;
+  if (firstBrace === -1 && firstBracket === -1) return null;
+  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+    start = firstBracket;
+    isArray = true;
+  } else {
+    start = firstBrace;
+    isArray = false;
+  }
+  cleaned = cleaned.slice(start);
+  
+  let result = cleaned;
+  let inString = false;
+  let escape = false;
+  let depth = 0;
+  let arrayDepth = 0;
+  let lastComplete = -1;
+  
+  for (let i = 0; i < result.length; i++) {
+    const ch = result[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') depth--;
+    else if (ch === '[') arrayDepth++;
+    else if (ch === ']') arrayDepth--;
+    if (depth === 0 && arrayDepth === 0 && (ch === '}' || ch === ']')) {
+      lastComplete = i;
+    }
+  }
+  
+  if (lastComplete > 0) {
+    try { return JSON.parse(result.slice(0, lastComplete + 1)); } catch {}
+  }
+  
+  let repaired = result;
+  let inStr = false;
+  let esc = false;
+  let stack = [];
+  
+  for (let i = 0; i < repaired.length; i++) {
+    const ch = repaired[i];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  
+  if (inStr) repaired += '"';
+  
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1];
+    if (top === '{') {
+      const lastComma = repaired.lastIndexOf(',');
+      const lastColon = repaired.lastIndexOf(':');
+      if (lastComma > lastColon && lastComma === repaired.length - 1) {
+        repaired = repaired.slice(0, -1);
+      }
+      repaired += '}';
+    } else if (top === '[') {
+      repaired += ']';
+    }
+    stack.pop();
+  }
+  
+  try { return JSON.parse(repaired); } catch (e) {
+    console.warn('JSON 修复失败:', e.message);
+    return null;
+  }
+}
+
 async function loadAnalysisBundle(songId, versionId) {
   const manifestPath = `${DATA_BASE}/analysis/${songId}/${versionId}.json`;
   const linesPath = `${DATA_BASE}/analysis/${songId}/${versionId}.lines.json`;
@@ -585,54 +671,6 @@ function renderEmptyState(song) {
   $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
-function fixTruncatedJson(jsonStr) {
-  let s = jsonStr;
-  
-  s = s.replace(/,\s*$/, '');
-  
-  let openBrace = 0, closeBrace = 0;
-  let openBracket = 0, closeBracket = 0;
-  let inString = false;
-  let escape = false;
-  
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (c === '\\') {
-      escape = true;
-      continue;
-    }
-    if (c === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (!inString) {
-      if (c === '{') openBrace++;
-      if (c === '}') closeBrace++;
-      if (c === '[') openBracket++;
-      if (c === ']') closeBracket++;
-    }
-  }
-  
-  while (openBrace > closeBrace) {
-    s += '}';
-    closeBrace++;
-  }
-  while (openBracket > closeBracket) {
-    s += ']';
-    closeBracket++;
-  }
-  
-  if (s.endsWith('"')) {
-    s += '"';
-  }
-  
-  return s;
-}
-
 // 在未解析状态下调用 AI 进行分词和翻译（临时，不写入 GitHub）
 async function startAiTokenize(song) {
   const cfg = getApiConfig();
@@ -670,10 +708,25 @@ async function startAiTokenize(song) {
     log(`📊 模型: ${cfg.model}`);
     log(`📝 歌词行数: ${song.lyrics_raw.length}`);
 
-    const prompt = `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：\n\n${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}\n\n请只输出一个 JSON 对象，不要任何解释文字，结构如下：\n{\n  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"...","grammar_analysis":[{"word":"新しい","base":"新しい","pos":"形容词连体形","role":"修饰「ミライ」"},{"word":"ミライ","base":"ミライ","pos":"名词","role":"片假名写法，意为'未来'；宾语的核心名词"},{"word":"を","base":"を","pos":"格助词","role":"提示「思い描く新しいミライ」整个名词短语为「探してた」的宾语"}]}],\n  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[\n    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}\n  ]}]\n}\n其中 grammar_analysis 是对整个句子的语法拆解，对每个词（或最小单位）给出原形、词性，以及它在句中的语法作用（修饰谁、是主语/宾语/谓语等）。请用中文描述 role 字段。`;
+    const prompt = `你是日语歌词教学助手。请解析以下日语歌词，输出 JSON：
+
+${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
+
+输出格式（只返回 JSON，不要其他文字）：
+{
+  "lines": [{"index":0,"text":"...","translation_cn":"...","words":[{"surface":"...","reading":"...","base":"...","pos":"...","meaning":"..."}]}]
+}
+
+要求：
+- words 按日语词法切分（含假名）
+- reading 是该词的假名读音
+- base 是原形
+- pos 是词性（名词/动词/形容词/助词等）
+- meaning 是中文释义（尽量简洁）
+- 如果输出长度受限，请确保返回合法 JSON，可以减少行数但格式必须完整`;
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
     
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',
@@ -727,44 +780,34 @@ async function startAiTokenize(song) {
     log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
     log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
 
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-      log(`✅ JSON 解析成功`, 'success');
-    } catch (e) {
-      log(`❌ JSON 解析失败: ${e.message}`, 'error');
-      log(`📝 原始内容长度: ${cleaned.length} 字符`, 'error');
-      log(`📝 原始内容末尾: "${cleaned.slice(-100)}"`, 'error');
-      
-      if (finishReason === 'length') {
-        log(`⚠️ 响应被截断 (finish_reason: length)，尝试自动修复...`, 'warning');
-        
-        const fixed = fixTruncatedJson(cleaned);
-        if (fixed !== cleaned) {
-          log(`🔧 尝试修复后长度: ${fixed.length} 字符`, 'info');
-          try {
-            parsed = JSON.parse(fixed);
-            log(`✅ 修复后 JSON 解析成功`, 'success');
-          } catch (e2) {
-            log(`❌ 修复后仍解析失败: ${e2.message}`, 'error');
-            log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型；3) 检查max_tokens设置`, 'warning');
-            throw new Error(`JSON 解析失败（响应被截断）：${e2.message}`);
-          }
-        } else {
-          log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型；3) 检查max_tokens设置`, 'warning');
-          throw new Error(`JSON 解析失败（响应被截断）：${e.message}`);
-        }
+    let parsed = repairBrokenJSON(text);
+    if (parsed) {
+      const isTruncated = finishReason === 'length';
+      if (isTruncated) {
+        log(`⚠️ 响应被截断但已自动修复，部分歌词可能未解析`, 'warning');
       } else {
-        throw new Error(`JSON 解析失败: ${e.message}`);
+        log(`✅ JSON 解析成功`, 'success');
       }
+    } else {
+      log(`❌ JSON 解析失败，无法修复`, 'error');
+      log(`📝 原始内容: ${text.slice(0, 300)}${text.length > 300 ? '...' : ''}`, 'error');
+      if (finishReason === 'length') {
+        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型`, 'warning');
+        throw new Error(`JSON 解析失败（响应被截断）`);
+      }
+      throw new Error(`JSON 解析失败`);
     }
 
     const analysis = { lines: [], sentences: [] };
     if (parsed.lines) {
-      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', sentence_id: l.sentence_id, translation_cn: l.translation_cn, words: l.words || [] }));
-      if (parsed.sentences) analysis.sentences = parsed.sentences;
-      log(`✅ 解析完成: ${analysis.lines.length} 行, ${analysis.sentences.length} 句子`, 'success');
+      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn, words: l.words || [] }));
+      const totalLines = song.lyrics_raw.length;
+      const parsedLines = analysis.lines.length;
+      if (parsedLines < totalLines) {
+        log(`⚠️ 部分解析: ${parsedLines}/${totalLines} 行（输出被截断）`, 'warning');
+      } else {
+        log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
+      }
     } else if (Array.isArray(parsed)) {
       parsed.forEach((words, idx) => analysis.lines.push({ index: idx, text: song.lyrics_raw[idx] || '', words }));
       log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
@@ -773,10 +816,20 @@ async function startAiTokenize(song) {
       throw new Error('AI 返回格式不符合预期');
     }
 
+    if (analysis.lines.length === 0) {
+      log('❌ 没有解析出任何行', 'error');
+      throw new Error('没有解析出任何歌词行');
+    }
+
     state.currentAnalysis = analysis;
     renderLyricsBlock(analysis);
     log(`🎉 本地渲染完成`, 'success');
-    toast('AI 解析完成（临时视图），点击任意词查看释义');
+    const isTruncated = finishReason === 'length' || analysis.lines.length < song.lyrics_raw.length;
+    if (isTruncated) {
+      toast(`已解析 ${analysis.lines.length}/${song.lyrics_raw.length} 行（部分截断），点击任意词查看释义`);
+    } else {
+      toast('AI 解析完成（临时视图），点击任意词查看释义');
+    }
   } catch (err) {
     if (err.name === 'AbortError') {
       log(`❌ 请求超时: AI接口在60秒内未响应`, 'error');
