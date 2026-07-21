@@ -548,15 +548,6 @@ function renderLyricsBlock(analysis) {
     </div>
   `).join('');
 
-  block.querySelectorAll('.w').forEach(node => {
-    node.addEventListener('click', () => {
-      block.querySelectorAll('.w.picked').forEach(n => n.classList.remove('picked'));
-      node.classList.add('picked');
-      const lineIdx = Number(node.closest('.lyric-jp').dataset.line);
-      const wordIdx = Number(node.dataset.widx);
-      showWordPop(analysis.lines[lineIdx].words[wordIdx]);
-    });
-  });
   block.querySelectorAll('.line-trans-btn').forEach(btn => {
     btn.addEventListener('click', () => showSentence(analysis, btn.dataset.sentence));
   });
@@ -564,9 +555,12 @@ function renderLyricsBlock(analysis) {
 
 // 把一行歌词的 words[] 转成 <ruby> 标记，助词等无 reading 差异的词直接输出文字
 function buildRubyMarkup(line) {
+  if (!line.words || !line.words.length) {
+    return escapeHtml(line.text || '');
+  }
   return line.words.map((w, i) => {
     if (w.pos === '助词' && w.surface === w.reading) {
-      return escapeHtml(w.surface); // 助词不加注音，避免视觉噪音
+      return escapeHtml(w.surface);
     }
     return `<ruby class="w" data-widx="${i}">${escapeHtml(w.surface)}<rt>${escapeHtml(w.reading)}</rt></ruby>`;
   }).join('');
@@ -708,21 +702,22 @@ async function startAiTokenize(song) {
     log(`📊 模型: ${cfg.model}`);
     log(`📝 歌词行数: ${song.lyrics_raw.length}`);
 
-    const prompt = `你是日语歌词教学助手。请解析以下日语歌词，输出 JSON：
+    const prompt = `你是日语歌词语法教学助手。请分析以下日语歌词每行的语法结构，输出 JSON：
 
 ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 
 输出格式（只返回 JSON，不要其他文字）：
 {
-  "lines": [{"index":0,"text":"...","translation_cn":"...","words":[{"surface":"...","reading":"...","base":"...","pos":"...","meaning":"..."}]}]
+  "lines": [{"index":0,"text":"...","translation_cn":"语法分析"}]
 }
 
 要求：
-- words 按日语词法切分（含假名）
-- reading 是该词的假名读音
-- base 是原形
-- pos 是词性（名词/动词/形容词/助词等）
-- meaning 是中文释义（尽量简洁）
+- translation_cn 字段包含该行的语法分析，包括：
+  1) 每个单词的词性和中文释义（如：名词-梦想、动词(ます形)-寻找）
+  2) 是否有变形（如：动词て形、た形、ない形）
+  3) 连接词/助词的作用（如：を-宾格助词、は-主题助词）
+  4) 句式结构（如：主谓宾、存在句、使役态）
+- 语法分析用中文描述，简洁明了，不要超过100字/行
 - 如果输出长度受限，请确保返回合法 JSON，可以减少行数但格式必须完整`;
     
     const controller = new AbortController();
@@ -800,7 +795,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 
     const analysis = { lines: [], sentences: [] };
     if (parsed.lines) {
-      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn, words: l.words || [] }));
+      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn }));
       const totalLines = song.lyrics_raw.length;
       const parsedLines = analysis.lines.length;
       if (parsedLines < totalLines) {
