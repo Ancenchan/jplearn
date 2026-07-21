@@ -77,6 +77,92 @@ async function fetchJSON(path) {
   return res.json();
 }
 
+function repairBrokenJSON(raw) {
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch {}
+  
+  let cleaned = raw.replace(/```json|```/g, '').trim();
+  
+  try { return JSON.parse(cleaned); } catch {}
+  
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let start = -1;
+  let isArray = false;
+  if (firstBrace === -1 && firstBracket === -1) return null;
+  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+    start = firstBracket;
+    isArray = true;
+  } else {
+    start = firstBrace;
+    isArray = false;
+  }
+  cleaned = cleaned.slice(start);
+  
+  let result = cleaned;
+  let inString = false;
+  let escape = false;
+  let depth = 0;
+  let arrayDepth = 0;
+  let lastComplete = -1;
+  
+  for (let i = 0; i < result.length; i++) {
+    const ch = result[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') depth--;
+    else if (ch === '[') arrayDepth++;
+    else if (ch === ']') arrayDepth--;
+    if (depth === 0 && arrayDepth === 0 && (ch === '}' || ch === ']')) {
+      lastComplete = i;
+    }
+  }
+  
+  if (lastComplete > 0) {
+    try { return JSON.parse(result.slice(0, lastComplete + 1)); } catch {}
+  }
+  
+  let repaired = result;
+  let inStr = false;
+  let esc = false;
+  let stack = [];
+  
+  for (let i = 0; i < repaired.length; i++) {
+    const ch = repaired[i];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  
+  if (inStr) repaired += '"';
+  
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1];
+    if (top === '{') {
+      const lastComma = repaired.lastIndexOf(',');
+      const lastColon = repaired.lastIndexOf(':');
+      if (lastComma > lastColon && lastComma === repaired.length - 1) {
+        repaired = repaired.slice(0, -1);
+      }
+      repaired += '}';
+    } else if (top === '[') {
+      repaired += ']';
+    }
+    stack.pop();
+  }
+  
+  try { return JSON.parse(repaired); } catch (e) {
+    console.warn('JSON 修复失败:', e.message);
+    return null;
+  }
+}
+
 async function loadAnalysisBundle(songId, versionId) {
   const manifestPath = `${DATA_BASE}/analysis/${songId}/${versionId}.json`;
   const linesPath = `${DATA_BASE}/analysis/${songId}/${versionId}.lines.json`;
@@ -636,10 +722,11 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 - reading 是该词的假名读音
 - base 是原形
 - pos 是词性（名词/动词/形容词/助词等）
-- meaning 是中文释义（简洁）`;
+- meaning 是中文释义（尽量简洁）
+- 如果输出长度受限，请确保返回合法 JSON，可以减少行数但格式必须完整`;
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
     
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',
@@ -647,7 +734,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${cfg.apiKey}`
       },
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 8000 }),
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 16000 }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -693,25 +780,34 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
     log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
 
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-      log(`✅ JSON 解析成功`, 'success');
-    } catch (e) {
-      log(`❌ JSON 解析失败: ${e.message}`, 'error');
-      log(`📝 原始内容: ${cleaned.slice(0, 200)}${cleaned.length > 200 ? '...' : ''}`, 'error');
-      if (finishReason === 'length') {
-        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型；3) 检查max_tokens设置`, 'warning');
-        throw new Error(`JSON 解析失败（响应被截断）：${e.message}`);
+    let parsed = repairBrokenJSON(text);
+    if (parsed) {
+      const isTruncated = finishReason === 'length';
+      if (isTruncated) {
+        log(`⚠️ 响应被截断但已自动修复，部分歌词可能未解析`, 'warning');
+      } else {
+        log(`✅ JSON 解析成功`, 'success');
       }
-      throw new Error(`JSON 解析失败: ${e.message}`);
+    } else {
+      log(`❌ JSON 解析失败，无法修复`, 'error');
+      log(`📝 原始内容: ${text.slice(0, 300)}${text.length > 300 ? '...' : ''}`, 'error');
+      if (finishReason === 'length') {
+        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型`, 'warning');
+        throw new Error(`JSON 解析失败（响应被截断）`);
+      }
+      throw new Error(`JSON 解析失败`);
     }
 
     const analysis = { lines: [], sentences: [] };
     if (parsed.lines) {
       parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn, words: l.words || [] }));
-      log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
+      const totalLines = song.lyrics_raw.length;
+      const parsedLines = analysis.lines.length;
+      if (parsedLines < totalLines) {
+        log(`⚠️ 部分解析: ${parsedLines}/${totalLines} 行（输出被截断）`, 'warning');
+      } else {
+        log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
+      }
     } else if (Array.isArray(parsed)) {
       parsed.forEach((words, idx) => analysis.lines.push({ index: idx, text: song.lyrics_raw[idx] || '', words }));
       log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
@@ -720,10 +816,20 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
       throw new Error('AI 返回格式不符合预期');
     }
 
+    if (analysis.lines.length === 0) {
+      log('❌ 没有解析出任何行', 'error');
+      throw new Error('没有解析出任何歌词行');
+    }
+
     state.currentAnalysis = analysis;
     renderLyricsBlock(analysis);
     log(`🎉 本地渲染完成`, 'success');
-    toast('AI 解析完成（临时视图），点击任意词查看释义');
+    const isTruncated = finishReason === 'length' || analysis.lines.length < song.lyrics_raw.length;
+    if (isTruncated) {
+      toast(`已解析 ${analysis.lines.length}/${song.lyrics_raw.length} 行（部分截断），点击任意词查看释义`);
+    } else {
+      toast('AI 解析完成（临时视图），点击任意词查看释义');
+    }
   } catch (err) {
     if (err.name === 'AbortError') {
       log(`❌ 请求超时: AI接口在60秒内未响应`, 'error');
