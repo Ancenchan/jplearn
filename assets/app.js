@@ -585,6 +585,54 @@ function renderEmptyState(song) {
   $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
+function fixTruncatedJson(jsonStr) {
+  let s = jsonStr;
+  
+  s = s.replace(/,\s*$/, '');
+  
+  let openBrace = 0, closeBrace = 0;
+  let openBracket = 0, closeBracket = 0;
+  let inString = false;
+  let escape = false;
+  
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === '\\') {
+      escape = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (c === '{') openBrace++;
+      if (c === '}') closeBrace++;
+      if (c === '[') openBracket++;
+      if (c === ']') closeBracket++;
+    }
+  }
+  
+  while (openBrace > closeBrace) {
+    s += '}';
+    closeBrace++;
+  }
+  while (openBracket > closeBracket) {
+    s += ']';
+    closeBracket++;
+  }
+  
+  if (s.endsWith('"')) {
+    s += '"';
+  }
+  
+  return s;
+}
+
 // 在未解析状态下调用 AI 进行分词和翻译（临时，不写入 GitHub）
 async function startAiTokenize(song) {
   const cfg = getApiConfig();
@@ -633,7 +681,7 @@ async function startAiTokenize(song) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${cfg.apiKey}`
       },
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 8000 }),
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 16000 }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -686,12 +734,30 @@ async function startAiTokenize(song) {
       log(`✅ JSON 解析成功`, 'success');
     } catch (e) {
       log(`❌ JSON 解析失败: ${e.message}`, 'error');
-      log(`📝 原始内容: ${cleaned.slice(0, 200)}${cleaned.length > 200 ? '...' : ''}`, 'error');
+      log(`📝 原始内容长度: ${cleaned.length} 字符`, 'error');
+      log(`📝 原始内容末尾: "${cleaned.slice(-100)}"`, 'error');
+      
       if (finishReason === 'length') {
-        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型；3) 检查max_tokens设置`, 'warning');
-        throw new Error(`JSON 解析失败（响应被截断）：${e.message}`);
+        log(`⚠️ 响应被截断 (finish_reason: length)，尝试自动修复...`, 'warning');
+        
+        const fixed = fixTruncatedJson(cleaned);
+        if (fixed !== cleaned) {
+          log(`🔧 尝试修复后长度: ${fixed.length} 字符`, 'info');
+          try {
+            parsed = JSON.parse(fixed);
+            log(`✅ 修复后 JSON 解析成功`, 'success');
+          } catch (e2) {
+            log(`❌ 修复后仍解析失败: ${e2.message}`, 'error');
+            log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型；3) 检查max_tokens设置`, 'warning');
+            throw new Error(`JSON 解析失败（响应被截断）：${e2.message}`);
+          }
+        } else {
+          log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型；3) 检查max_tokens设置`, 'warning');
+          throw new Error(`JSON 解析失败（响应被截断）：${e.message}`);
+        }
+      } else {
+        throw new Error(`JSON 解析失败: ${e.message}`);
       }
-      throw new Error(`JSON 解析失败: ${e.message}`);
     }
 
     const analysis = { lines: [], sentences: [] };

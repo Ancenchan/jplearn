@@ -332,7 +332,7 @@ async function callAI(apiUrl, apiKey, model, prompt) {
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 8000
+        max_tokens: 16000
       }),
       signal: controller.signal
     });
