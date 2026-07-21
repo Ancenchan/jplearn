@@ -298,18 +298,21 @@ async function handleParse(request, env) {
 }
 
 function buildParsePrompt(lyrics) {
-  return `你是日语歌词教学助手。给定以下按行排列的日语歌词（歌词因为配合旋律被拆成多行，请自动判断哪些行属于同一个完整句子）：
+  return `你是日语歌词教学助手。请解析以下日语歌词，输出 JSON：
 
 ${lyrics.map((l, i) => `${i}: ${l}`).join('\n')}
 
-请只输出一个 JSON 对象，不要任何解释文字，结构如下：
+输出格式（只返回 JSON，不要其他文字）：
 {
-  "sentences": [{"id":"sentence1","line_indices":[0],"text_jp":"...","translation_cn":"...","grammar_analysis":[{"word":"新しい","base":"新しい","pos":"形容词连体形","role":"修饰「ミライ」"},{"word":"ミライ","base":"ミライ","pos":"名词","role":"片假名写法，意为'未来'；宾语的核心名词"},{"word":"を","base":"を","pos":"格助词","role":"提示「思い描く新しいミライ」整个名词短语为「探してた」的宾语"}]}],
-  "lines": [{"index":0,"text":"...","sentence_id":"sentence1","translation_cn":"...","words":[
-    {"surface":"...","reading":"...","base":"...","pos":"...","conjugation":"...","chain":"...","meaning":"..."}
-  ]}]
+  "lines": [{"index":0,"text":"...","translation_cn":"...","words":[{"surface":"...","reading":"...","base":"...","pos":"...","meaning":"..."}]}]
 }
-其中 grammar_analysis 是对整个句子的语法拆解，对每个词（或最小单位）给出原形、词性，以及它在句中的语法作用（修饰谁、是主语/宾语/谓语等）。请用中文描述 role 字段。`;
+
+要求：
+- words 按日语词法切分（含假名）
+- reading 是该词的假名读音
+- base 是原形
+- pos 是词性（名词/动词/形容词/助词等）
+- meaning 是中文释义（简洁）`;
 }
 
 function tryParseJSON(text) {
