@@ -318,12 +318,69 @@ ${lyrics.map((l, i) => `${i}: ${l}`).join('\n')}
 function tryParseJSON(text) {
   if (!text) return null;
   const cleaned = text.replace(/```json|```/g, '').trim();
-  try { return JSON.parse(cleaned); } catch { return null; }
+  try { return JSON.parse(cleaned); } catch {}
+  
+  // 尝试提取并修复被截断的 JSON
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let start = -1;
+  if (firstBrace === -1 && firstBracket === -1) return null;
+  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+    start = firstBracket;
+  } else {
+    start = firstBrace;
+  }
+  let repaired = cleaned.slice(start);
+  
+  // 先尝试找最后一个完整的对象
+  let depth = 0, arrayDepth = 0, inString = false, escape = false, lastComplete = -1;
+  for (let i = 0; i < repaired.length; i++) {
+    const ch = repaired[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') depth--;
+    else if (ch === '[') arrayDepth++;
+    else if (ch === ']') arrayDepth--;
+    if (depth === 0 && arrayDepth === 0 && (ch === '}' || ch === ']')) {
+      lastComplete = i;
+    }
+  }
+  if (lastComplete > 0) {
+    try { return JSON.parse(repaired.slice(0, lastComplete + 1)); } catch {}
+  }
+  
+  // 尝试补全缺失的括号
+  let stack = [];
+  inString = false; escape = false;
+  for (let i = 0; i < repaired.length; i++) {
+    const ch = repaired[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\') { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  if (inString) repaired += '"';
+  while (stack.length > 0) {
+    const top = stack[stack.length - 1];
+    if (top === '{') {
+      if (repaired.endsWith(',')) repaired = repaired.slice(0, -1);
+      repaired += '}';
+    } else if (top === '[') {
+      repaired += ']';
+    }
+    stack.pop();
+  }
+  try { return JSON.parse(repaired); } catch { return null; }
 }
 
 async function callAI(apiUrl, apiKey, model, prompt) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
 
   try {
     const res = await fetch(apiUrl, {
@@ -342,8 +399,17 @@ async function callAI(apiUrl, apiKey, model, prompt) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(`${res.status} ${res.statusText}: ${errorData.error?.message || errorData.message || '未知错误'}`);
+      let errorDetail = '';
+      try {
+        const errText = await res.text();
+        try {
+          const errorData = JSON.parse(errText);
+          errorDetail = errorData.error?.message || errorData.message || errText;
+        } catch {
+          errorDetail = errText || '';
+        }
+      } catch {}
+      throw new Error(`${res.status} ${res.statusText}: ${errorDetail || '未知错误'}`);
     }
 
     const data = await res.json();

@@ -746,11 +746,21 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     if (!res.ok) {
       let errorDetail = '';
       try {
-        const errData = await res.json();
-        errorDetail = errData.error?.message || errData.message || '';
+        const errText = await res.text();
+        try {
+          const errData = JSON.parse(errText);
+          errorDetail = errData.error?.message || errData.message || errText;
+        } catch {
+          errorDetail = errText || '';
+        }
       } catch {}
       const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
       log(`❌ ${errMsg}`, 'error');
+      if (res.status === 404) {
+        log(`💡 404 通常意味着：1) API 地址 URL 路径错误；2) 模型名已弃用或不存在`, 'warning');
+        log(`💡 Gemini 当前可用模型：gemini-2.0-flash, gemini-2.5-flash 等（gemini-1.5-flash 已弃用）`, 'warning');
+        log(`💡 Gemini OpenAI 兼容端点：https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, 'warning');
+      }
       throw new Error(errMsg);
     }
 
