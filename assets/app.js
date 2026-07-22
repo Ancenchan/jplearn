@@ -722,7 +722,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 - 如果输出长度受限，请确保返回合法 JSON，可以减少行数但格式必须完整`;
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
     
     const res = await fetch(cfg.apiUrl, {
       method: 'POST',

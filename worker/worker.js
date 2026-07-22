@@ -380,7 +380,7 @@ function tryParseJSON(text) {
 
 async function callAI(apiUrl, apiKey, model, prompt) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 120000);
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
 
   try {
     const res = await fetch(apiUrl, {
