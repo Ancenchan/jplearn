@@ -683,6 +683,7 @@ async function startAiTokenize(song) {
     </div>
   `);
   document.body.appendChild(logWindow);
+  logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
 
   function log(msg, type = 'info') {
     const content = $('#ai-log-content');
@@ -836,7 +837,6 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     }
   } finally {
     btn.disabled = false; btn.textContent = '✨ AI 解析（切词+翻译）';
-    logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
   }
   return logWindow;
 }
@@ -1199,9 +1199,14 @@ function openApiConfigDialog(onSaved) {
         <div class="section-label" style="margin-top:0;">配置 AI API（仅保存在本机浏览器）</div>
         <button type="button" id="cfg-close" aria-label="关闭" style="border:0;background:transparent;color:#8b7fa6;font-size:20px;cursor:pointer;line-height:1;">×</button>
       </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <button type="button" id="preset-openai" style="font-size:11px;padding:4px 8px;border:1px solid #e5e1f0;border-radius:8px;background:#faf8fe;cursor:pointer;color:#6b628a;">OpenAI</button>
+        <button type="button" id="preset-deepseek" style="font-size:11px;padding:4px 8px;border:1px solid #e5e1f0;border-radius:8px;background:#faf8fe;cursor:pointer;color:#6b628a;">DeepSeek</button>
+        <button type="button" id="preset-zhipu" style="font-size:11px;padding:4px 8px;border:1px solid #e5e1f0;border-radius:8px;background:#faf8fe;cursor:pointer;color:#6b628a;">智谱GLM</button>
+      </div>
       <div class="field"><label>API 地址</label><input id="cfg-url" value="${escapeHtml(cfg.apiUrl)}" placeholder="https://api.openai.com/v1/chat/completions"></div>
       <div class="field"><label>API Key</label><input id="cfg-key" type="password" value="${escapeHtml(cfg.apiKey)}"></div>
-      <div class="field"><label>模型名称</label><input id="cfg-model" value="${escapeHtml(cfg.model)}" placeholder="例如 gpt-4o / deepseek-chat"></div>
+      <div class="field"><label>模型名称</label><input id="cfg-model" value="${escapeHtml(cfg.model)}" placeholder="例如 gpt-4o / glm-4.5-air"></div>
       <div id="cfg-test-result" style="min-height:24px;font-size:12px;color:var(--ink-soft);text-align:center;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;">
         <button class="parse-btn" id="cfg-save">保存并继续</button>
@@ -1216,6 +1221,18 @@ function openApiConfigDialog(onSaved) {
   };
 
   $('#cfg-close', wrap).addEventListener('click', closeDialog);
+  $('#preset-openai', wrap).addEventListener('click', () => {
+    $('#cfg-url', wrap).value = 'https://api.openai.com/v1/chat/completions';
+    $('#cfg-model', wrap).value = 'gpt-4o';
+  });
+  $('#preset-deepseek', wrap).addEventListener('click', () => {
+    $('#cfg-url', wrap).value = 'https://api.deepseek.com/v1/chat/completions';
+    $('#cfg-model', wrap).value = 'deepseek-chat';
+  });
+  $('#preset-zhipu', wrap).addEventListener('click', () => {
+    $('#cfg-url', wrap).value = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+    $('#cfg-model', wrap).value = 'glm-4.5-air';
+  });
   $('#cfg-test', wrap).addEventListener('click', () => {
     const url = $('#cfg-url', wrap).value.trim();
     const key = $('#cfg-key', wrap).value.trim();
