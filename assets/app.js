@@ -408,7 +408,7 @@ async function renderSongDetail(songId) {
     </div>
   `;
 
-  renderLyricsBlock(analysis);
+  renderLyricsBlock(analysis, song);
 
   $('#reparse-btn').addEventListener('click', () => startParse(song, { rerun: true }));
   $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
@@ -538,11 +538,12 @@ async function enableLocalVocabularyLookup(song, { showSentenceActions = false }
   }
 }
 
-function renderLyricsBlock(analysis) {
+function renderLyricsBlock(analysis, song) {
   const block = $('#lyrics-block');
+  const furiganaLines = song?.lyrics_with_furigana;
   block.innerHTML = analysis.lines.map((line, idx) => `
     <div class="lyric-line">
-      <div class="lyric-jp" data-line="${idx}">${buildRubyMarkup(line)}</div>
+      <div class="lyric-jp" data-line="${idx}">${buildRubyMarkup(line, furiganaLines, idx)}</div>
       ${line.translation_cn ? `<div class="line-trans">${escapeHtml(line.translation_cn)}</div>` : ''}
       ${line.sentence_id ? `<button type="button" class="line-trans-btn" data-sentence="${line.sentence_id}">🔗 句子</button>` : ''}
     </div>
@@ -554,16 +555,24 @@ function renderLyricsBlock(analysis) {
 }
 
 // 把一行歌词的 words[] 转成 <ruby> 标记，助词等无 reading 差异的词直接输出文字
-function buildRubyMarkup(line) {
-  if (!line.words || !line.words.length) {
-    return escapeHtml(line.text || '');
+function buildRubyMarkup(line, furiganaLines, lineIdx) {
+  if (line.words && line.words.length) {
+    return line.words.map((w, i) => {
+      if (w.pos === '助词' && w.surface === w.reading) {
+        return escapeHtml(w.surface);
+      }
+      return `<ruby class="w" data-widx="${i}">${escapeHtml(w.surface)}<rt>${escapeHtml(w.reading)}</rt></ruby>`;
+    }).join('');
   }
-  return line.words.map((w, i) => {
-    if (w.pos === '助词' && w.surface === w.reading) {
-      return escapeHtml(w.surface);
-    }
-    return `<ruby class="w" data-widx="${i}">${escapeHtml(w.surface)}<rt>${escapeHtml(w.reading)}</rt></ruby>`;
-  }).join('');
+  if (furiganaLines && furiganaLines[lineIdx]) {
+    return furiganaLines[lineIdx].map(part => {
+      if (part.furigana) {
+        return `<ruby><rb>${escapeHtml(part.text)}</rb><rt>${escapeHtml(part.furigana)}</rt></ruby>`;
+      }
+      return escapeHtml(part.text);
+    }).join('');
+  }
+  return escapeHtml(line.text || '');
 }
 
 function showWordPop(word) {
@@ -828,7 +837,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     }
 
     state.currentAnalysis = analysis;
-    renderLyricsBlock(analysis);
+    renderLyricsBlock(analysis, song);
     log(`🎉 本地渲染完成`, 'success');
     const isTruncated = finishReason === 'length' || analysis.lines.length < song.lyrics_raw.length;
     if (isTruncated) {
