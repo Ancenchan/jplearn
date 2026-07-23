@@ -81,7 +81,7 @@ function repairBrokenJSON(raw) {
   if (!raw) return null;
   try { return JSON.parse(raw); } catch {}
   
-  let cleaned = raw.replace(/```json|```/g, '').trim();
+  let cleaned = raw.replace(/```json\s*/g, '').replace(/```/g, '').trim();
   
   try { return JSON.parse(cleaned); } catch {}
   
