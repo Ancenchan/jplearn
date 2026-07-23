@@ -28,8 +28,8 @@ body{
 
 /* 歌曲详情页：宽屏双栏布局 */
 .song-detail-layout{ display: flex; gap: 16px; align-items: flex-start; }
-.song-detail-layout .detail-left{ flex: 1 1 55%; min-width: 0; }
-.song-detail-layout .detail-right{ flex: 0 0 38%; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
+.song-detail-layout .detail-left{ flex: 1 1 68%; min-width: 0; }
+.song-detail-layout .detail-right{ flex: 0 0 30%; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
 @media (min-width: 900px){
   .app{ max-width: 860px; }
 }
