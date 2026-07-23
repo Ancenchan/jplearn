@@ -398,10 +398,6 @@ async function renderSongDetail(songId) {
         <div class="lyrics-block" id="lyrics-block"></div>
       </div>
       <div class="detail-right">
-        <div class="section-label">单词解析</div>
-        <div id="word-pop-slot">
-          <div class="word-pop"><div class="pop-empty">点击左侧任意一个词，查看它的语法拆解</div></div>
-        </div>
         <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
         <div id="sentence-slot"></div>
       </div>
@@ -484,28 +480,6 @@ function renderTokenizedLyricsBlock(lines, tokensByLine, { showSentenceActions =
   `).join('');
 }
 
-function showLocalWordPop(query, matches) {
-  const slot = $('#word-pop-slot');
-  if (!matches.length) {
-    slot.innerHTML = `<div class="word-pop"><div class="pop-empty">「${escapeHtml(query)}」在本地 5757 词词典中没有找到匹配。可以点击相邻片段，或使用 AI 解析获得更完整的分词结果。</div></div>`;
-    return;
-  }
-  const primary = matches[0];
-  const entry = primary.entry;
-  const definition = window.JpLearnVocab.meanings(entry).join('；') || '词典暂无释义';
-  slot.innerHTML = `
-    <div class="word-pop">
-      <div class="word-pop-head"><div class="word-pop-jp">${escapeHtml(entry['词汇'])}</div><div class="word-pop-yomi">${escapeHtml(entry['读音'] || '')}</div></div>
-      <div class="pop-grid">
-        <div class="k">匹配</div><div>${escapeHtml(primary.kind)}${primary.kind === '活用形' ? `：${escapeHtml(query)}` : ''}</div>
-        <div class="k">词性</div><div><span class="pop-tag">${escapeHtml(entry['词性'] || '未标注')}</span></div>
-        <div class="k">释义</div><div>${escapeHtml(definition)}</div>
-      </div>
-      ${matches.length > 1 ? `<div class="pop-chain">还找到 ${matches.length - 1} 个相近词条：${escapeHtml(matches.slice(1).map(match => match.entry['词汇']).join('、'))}</div>` : ''}
-    </div>`;
-  slot.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
 async function enableLocalVocabularyLookup(song, { showSentenceActions = false } = {}) {
   const button = $('#local-vocab-btn');
   if (!button) return;
@@ -561,7 +535,7 @@ function buildRubyMarkup(line, furiganaLines, lineIdx) {
       if (w.pos === '助词' && w.surface === w.reading) {
         return escapeHtml(w.surface);
       }
-      return `<ruby class="w" data-widx="${i}">${escapeHtml(w.surface)}<rt>${escapeHtml(w.reading)}</rt></ruby>`;
+      return `<ruby>${escapeHtml(w.surface)}<rt>${escapeHtml(w.reading)}</rt></ruby>`;
     }).join('');
   }
   if (furiganaLines && furiganaLines[lineIdx]) {
@@ -573,24 +547,6 @@ function buildRubyMarkup(line, furiganaLines, lineIdx) {
     }).join('');
   }
   return escapeHtml(line.text || '');
-}
-
-function showWordPop(word) {
-  const slot = $('#word-pop-slot');
-  slot.innerHTML = `
-    <div class="word-pop">
-      <div class="word-pop-head">
-        <div class="word-pop-jp">${escapeHtml(word.surface)}</div>
-        <div class="word-pop-yomi">${escapeHtml(word.reading)}</div>
-      </div>
-      <div class="pop-grid">
-        <div class="k">原形</div><div>${escapeHtml(word.base)}</div>
-        <div class="k">词性</div><div><span class="pop-tag">${escapeHtml(word.pos)}</span></div>
-        <div class="k">释义</div><div>${escapeHtml(word.meaning || '')}</div>
-      </div>
-      ${word.chain ? `<div class="pop-chain">变化过程 &nbsp;<b>${escapeHtml(word.chain)}</b>${word.conjugation ? `（${escapeHtml(word.conjugation)}）` : ''}</div>` : ''}
-    </div>
-  `;
 }
 
 function showSentence(analysis, sentenceId) {
@@ -663,8 +619,6 @@ function renderEmptyState(song) {
         <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana)}</div>
       </div>
       <div class="detail-right">
-        <div class="section-label">单词解析</div>
-        <div id="word-pop-slot"><div class="word-pop"><div class="pop-empty">点击上方「AI 解析」按钮，获取单词切分和释义</div></div></div>
         <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
         <div id="sentence-slot"></div>
       </div>
