@@ -716,7 +716,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 「哀しい」形容词基本形，意为"悲伤的"；「ほど」副助词，表程度，"……到……程度"，修饰后文；「とり憑かれて」动词「とり憑く」被动形连用形，"被附身"；「仕舞いたい」动词「仕舞う」+愿望助动词「たい」，谓语，"想要彻底……"。整句意为"想要悲伤到被彻底附身"。
 
 规则：
-1. 每句必须逐词解析：写出单词原形、词性（含活用形）、中文义
+1. 每句必须逐词解析：写出单词原形、词性（含活用形）、中文意思
 2.句末用"整句意为：……"收尾
 直接输出JSON，不要其他文字。`;
     
@@ -769,6 +769,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     }
     
     const text = data.choices?.[0]?.message?.content 
+      || data.choices?.[0]?.message?.reasoning_content
       || data?.result 
       || data?.content 
       || data?.response 
@@ -1322,6 +1323,7 @@ async function testApiConnection(apiUrl, apiKey, model, resultEl) {
     }
 
     const text = data.choices?.[0]?.message?.content 
+      || data.choices?.[0]?.message?.reasoning_content
       || data?.result 
       || data?.content 
       || data?.response 

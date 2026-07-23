@@ -414,6 +414,7 @@ async function callAI(apiUrl, apiKey, model, prompt) {
 
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content 
+      || data.choices?.[0]?.message?.reasoning_content
       || data?.result 
       || data?.content 
       || data?.response 
