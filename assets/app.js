@@ -1131,21 +1131,26 @@ async function saveAnalysisToGitHub(song, analysis, versionId) {
   }
 
   async function githubPutJSON(path, obj, message) {
-    const existing = await githubGetFile(path).catch(() => null);
-    const res = await fetch(
-      `${GITHUB_API}/repos/${OWNER}/${REPO}/contents/${path}`,
-      {
-        method: 'PUT',
-        headers: githubHeaders(),
-        body: JSON.stringify({
-          message,
-          content: encodeBase64(JSON.stringify(obj, null, 2)),
-          branch: BRANCH,
-          ...(existing ? { sha: existing.sha } : {})
-        })
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const existing = await githubGetFile(path).catch(() => null);
+      const res = await fetch(
+        `${GITHUB_API}/repos/${OWNER}/${REPO}/contents/${path}`,
+        {
+          method: 'PUT',
+          headers: githubHeaders(),
+          body: JSON.stringify({
+            message,
+            content: encodeBase64(JSON.stringify(obj, null, 2)),
+            branch: BRANCH,
+            ...(existing ? { sha: existing.sha } : {})
+          })
+        }
+      );
+      if (res.ok) return;
+      if (res.status === 409 && attempt < 2) {
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
       }
-    );
-    if (!res.ok) {
       const errText = await res.text();
       throw new Error(`写入 ${path} 失败: ${errText}`);
     }
