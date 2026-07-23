@@ -1,6 +1,7 @@
 name = "jplearn-worker"
 main = "worker.js"
 compatibility_date = "2026-07-01"
+request_timeout_seconds = 120
 
 # 部署后用下面的命令设置 secrets（不要写在这个文件里）：
 #   wrangler secret put GITHUB_TOKEN

@@ -428,7 +428,7 @@ async function callAI(apiUrl, apiKey, model, prompt) {
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('504 超时: AI接口在60秒内未响应，请稍后重试或尝试使用更快的模型');
+      throw new Error('504 超时: AI接口在300秒内未响应，请稍后重试或尝试使用更快的模型');
     }
     throw err;
   }
