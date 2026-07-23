@@ -393,14 +393,7 @@ async function renderSongDetail(songId) {
     </div>
     <button class="parse-btn" id="reparse-btn">✨ 用新版本重新解析</button>
     <div class="song-detail-layout">
-      <div class="detail-left">
-        <div class="section-label">歌词</div>
-        <div class="lyrics-block" id="lyrics-block"></div>
-      </div>
-      <div class="detail-right">
-        <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
-        <div id="sentence-slot"></div>
-      </div>
+      <div class="lyrics-block" id="lyrics-block"></div>
     </div>
   `;
 
@@ -614,14 +607,7 @@ function renderEmptyState(song) {
     </div>
     <button class="parse-btn" id="start-parse-btn">✨ AI 解析（切词+翻译）</button>
     <div class="song-detail-layout">
-      <div class="detail-left">
-        <div class="section-label">歌词</div>
-        <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana)}</div>
-      </div>
-      <div class="detail-right">
-        <div class="section-label" id="sentence-label" style="display:none;">当前句子</div>
-        <div id="sentence-slot"></div>
-      </div>
+      <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana)}</div>
     </div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startAiTokenizeAndParse(song));

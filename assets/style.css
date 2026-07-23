@@ -26,17 +26,10 @@ body{
 }
 .app{ max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
 
-/* 歌曲详情页：宽屏双栏布局 */
-.song-detail-layout{ display: flex; gap: 16px; align-items: flex-start; }
-.song-detail-layout .detail-left{ flex: 1 1 68%; min-width: 0; }
-.song-detail-layout .detail-right{ flex: 0 0 30%; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
+/* 歌曲详情页：单栏布局 */
+.song-detail-layout{ display: block; }
 @media (min-width: 900px){
-  .app{ max-width: 860px; }
-}
-@media (max-width: 768px){
-  .song-detail-layout{ flex-direction: column; }
-  .song-detail-layout .detail-left{ flex: 1 1 auto; }
-  .song-detail-layout .detail-right{ flex: 1 1 auto; position: static; max-height: none; overflow-y: visible; }
+  .app{ max-width: 680px; }
 }
 
 .brand{ display:flex; align-items:center; gap:10px; margin: 18px 4px 18px; }
