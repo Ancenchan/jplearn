@@ -140,14 +140,11 @@ function normalizeLyricsHtml(fragment) {
     .replace(/<rp[\s\S]*?<\/rp>/gi, '')
     .replace(/<span class="ruby"[^>]*><span class="rb"[^>]*>([\s\S]*?)<\/span><span class="rt"[^>]*>([\s\S]*?)<\/span><\/span>/gi, (_, rb, rt) => {
       const kanji = rb.trim();
-      const kana = rt.trim();
-      return kanji && kana ? `${kanji}${kana}` : kanji;
+      return kanji;
     })
     .replace(/<ruby[^>]*>([\s\S]*?)<\/ruby>/gi, (_, content) => {
       const kanji = content.replace(/<rt[\s\S]*?<\/rt>/gi, '').trim();
-      const rtMatch = content.match(/<rt[\s\S]*?>([\s\S]*?)<\/rt>/i);
-      const kana = rtMatch ? rtMatch[1].trim() : '';
-      return kanji && kana ? `${kanji}${kana}` : kanji;
+      return kanji;
     })
     .replace(/<rt[\s\S]*?<\/rt>/gi, '')
     .replace(/<ruby[^>]*>/gi, '')

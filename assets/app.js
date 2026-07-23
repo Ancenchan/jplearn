@@ -1305,6 +1305,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     if (btn) btn.textContent = '正在保存到 GitHub… 80%';
     const analysisId = `${song.id}_${Date.now()}`;
     await saveAnalysisToGitHub(song, analysis, analysisId);
+    if (btn) btn.textContent = '保存完成 100%';
     log(`🎉 解析完成！analysis_id: ${analysisId}`, 'success');
     toast('解析完成');
     setTimeout(() => {

@@ -99,7 +99,7 @@ test('imports Utaten lyrics from nested lyricBody markup', async () => {
     const songWrite = writes.find(write => write.message === '新增歌曲: Nested Song');
     assert.ok(songWrite);
     const songDoc = JSON.parse(Buffer.from(songWrite.content, 'base64').toString('utf8'));
-    assert.deepEqual(songDoc.lyrics_raw, ['桜さくら', '舞う']);
+    assert.deepEqual(songDoc.lyrics_raw, ['桜', '舞う']);
     assert.deepEqual(songDoc.lyrics_with_furigana, [
       [{ text: '桜', furigana: 'さくら' }],
       [{ text: '舞う', furigana: '' }]
