@@ -1094,16 +1094,106 @@ async function waitForDeletion(songId) {
   }
 }
 
+// ---------- 保存解析结果到 GitHub ----------
+async function saveAnalysisToGitHub(song, analysis, versionId) {
+  const token = getGitHubToken();
+  if (!token) {
+    throw new Error('没有配置 GitHub Token，无法保存解析结果');
+  }
+
+  const GITHUB_API = 'https://api.github.com';
+  const OWNER = 'Ancenchan';
+  const REPO = 'jplearn';
+  const BRANCH = 'main';
+
+  function githubHeaders() {
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'jplearn-frontend'
+    };
+  }
+
+  function encodeBase64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  async function githubGetFile(path) {
+    const res = await fetch(
+      `${GITHUB_API}/repos/${OWNER}/${REPO}/contents/${path}?ref=${BRANCH}`,
+      { headers: githubHeaders() }
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`读取 ${path} 失败: ${res.status}`);
+    const data = await res.json();
+    const content = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ''))));
+    return { json: JSON.parse(content), sha: data.sha };
+  }
+
+  async function githubPutJSON(path, obj, message) {
+    const existing = await githubGetFile(path).catch(() => null);
+    const res = await fetch(
+      `${GITHUB_API}/repos/${OWNER}/${REPO}/contents/${path}`,
+      {
+        method: 'PUT',
+        headers: githubHeaders(),
+        body: JSON.stringify({
+          message,
+          content: encodeBase64(JSON.stringify(obj, null, 2)),
+          branch: BRANCH,
+          ...(existing ? { sha: existing.sha } : {})
+        })
+      }
+    );
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`写入 ${path} 失败: ${errText}`);
+    }
+  }
+
+  const linesPath = `data/analysis/${song.id}/${versionId}.lines.json`;
+  const manifestPath = `data/analysis/${song.id}/${versionId}.json`;
+
+  const linesDoc = {
+    lines: analysis.lines || [],
+    sentences: analysis.sentences || []
+  };
+
+  const manifestDoc = {
+    id: versionId,
+    song_id: song.id,
+    created_at: new Date().toISOString(),
+    lyrics_source: 'manual',
+    ai_model: getApiConfig().model,
+    status: 'completed',
+    lyrics_snapshot: song.lyrics_raw
+  };
+
+  await githubPutJSON(linesPath, linesDoc, `解析: ${song.id} (${getApiConfig().model})`);
+  await githubPutJSON(manifestPath, manifestDoc, `解析: ${song.id} (${getApiConfig().model})`);
+
+  const songFile = await githubGetFile(`data/songs/${song.id}.json`);
+  if (songFile) {
+    songFile.json.analysis_versions = songFile.json.analysis_versions || [];
+    songFile.json.analysis_versions.push(versionId);
+    await githubPutJSON(`data/songs/${song.id}.json`, songFile.json, `新增解析版本: ${versionId}`);
+  }
+
+  const indexFile = await githubGetFile('data/index.json');
+  if (indexFile) {
+    const entry = indexFile.json.songs.find(s => s.id === song.id);
+    if (entry) {
+      entry.analysis_count = (entry.analysis_count || 0) + 1;
+      await githubPutJSON('data/index.json', indexFile.json, `index: 更新解析计数 ${song.id}`);
+    }
+  }
+}
+
 // ---------- AI 解析 ----------
 async function startParse(song, { rerun }) {
   const cfg = getApiConfig();
   if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
     openApiConfigDialog(() => startParse(song, { rerun }));
-    return;
-  }
-  const workerBase = getWorkerBase();
-  if (!workerBase) {
-    toast('还没有配置 Worker 地址，暂时无法调用AI解析（见设置按钮）');
     return;
   }
 
@@ -1117,6 +1207,7 @@ async function startParse(song, { rerun }) {
     </div>
   `);
   document.body.appendChild(logWindow);
+  logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
 
   function log(msg, type = 'info') {
     const content = $('#ai-log-content');
@@ -1124,73 +1215,148 @@ async function startParse(song, { rerun }) {
     const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
     content.appendChild(line);
     content.scrollTop = content.scrollHeight;
+    console.log(`[AI解析] ${msg}`);
   }
 
   const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '正在分析歌词结构… 30%'; }
+  if (btn) { btn.disabled = true; btn.textContent = '🤖 AI 解析中…'; }
 
   log(`⏳ 开始解析「${song.title}」`);
-  log(`📤 发送请求到 Worker: ${workerBase}`);
+  log(`📤 发送请求到: ${cfg.apiUrl}`);
   log(`📊 模型: ${cfg.model}`);
   log(`📝 歌词行数: ${song.lyrics_raw.length}`);
 
   try {
     const startTime = Date.now();
-    const res = await fetch(`${workerBase}/api/parse`, {
+
+    const prompt = `你是日语歌词语法教学助手。请分析以下日语歌词每行的语法结构，输出 JSON：
+
+${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
+
+输出格式（只返回 JSON，不要其他文字）：
+{
+  "lines": [{"index":0,"text":"...","translation_cn":"语法分析"}]
+}
+语法分析 写法要求（严格遵循）：
+参考风格：
+「哀しい」形容词基本形，意为"悲伤的"；「ほど」副助词，表程度，"……到……程度"，修饰后文；「とり憑かれて」动词「とり憑く」被动形连用形，"被附身"；「仕舞いたい」动词「仕舞う」+愿望助动词「たい」，谓语，"想要彻底……"。整句意为"想要悲伤到被彻底附身"。
+
+规则：
+1. 每句必须逐词解析：写出单词原形、词性（含活用形）、中文意思
+2.句末用"整句意为：……"收尾
+直接输出JSON，不要其他文字。`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+    const res = await fetch(cfg.apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        song_id: song.id,
-        lyrics: song.lyrics_raw,
-        api_url: cfg.apiUrl,
-        api_key: cfg.apiKey,
-        model: cfg.model,
-        github_token: getGitHubToken()
-      })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`
+      },
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 16000 }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     const elapsed = Math.round((Date.now() - startTime) / 1000);
     log(`✅ 请求完成 (${elapsed}s)`, 'success');
     log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
 
-    if (btn) btn.textContent = '正在生成语法解析… 80%';
-
     if (!res.ok) {
-let errorText;
+      let errorDetail = '';
       try {
-        const jsonData = await res.json();
-        errorText = JSON.stringify(jsonData);
-      } catch {
-        errorText = await res.text();
+        const errText = await res.text();
+        try {
+          const errData = JSON.parse(errText);
+          errorDetail = errData.error?.message || errData.message || errText;
+        } catch {
+          errorDetail = errText || '';
+        }
+      } catch {}
+      const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
+      log(`❌ ${errMsg}`, 'error');
+      if (res.status === 404) {
+        log(`💡 404 通常意味着：1) API 地址 URL 路径错误；2) 模型名已弃用或不存在`, 'warning');
       }
-      log(`❌ 请求失败: ${errorText}`, 'error');
-      
-      if (errorText.includes('504') || errorText.includes('超时')) {
-        log(`💡 建议：超时通常是由于 AI 模型响应过慢导致的。请尝试：1) 使用更快的模型（如 gemini-1.5-flash）；2) 减少歌词行数；3) 稍后重试。`, 'warning');
-      } else if (errorText.includes('524')) {
-        log(`💡 建议：Cloudflare 524 错误表示后端 API 请求超时。这通常是 AI 服务端响应过慢导致的，请稍后重试。`, 'warning');
-      } else if (errorText.includes('401') || errorText.includes('Unauthorized')) {
-        log(`💡 建议：请检查 API Key 是否正确配置。`, 'warning');
-      } else if (errorText.includes('429')) {
-        log(`💡 建议：API 请求频率超限，请稍后重试或检查 API 配额。`, 'warning');
-      }
-      throw new Error(errorText);
+      throw new Error(errMsg);
     }
 
     const data = await res.json();
-    log(`📥 响应数据: ${JSON.stringify(data)}`, 'success');
+    log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
+    log(`📥 响应预览: ${JSON.stringify(data).slice(0, 500)}${JSON.stringify(data).length > 500 ? '...' : ''}`, 'info');
 
-    if (data.analysis_id) {
-      log(`🎉 解析完成！analysis_id: ${data.analysis_id}`, 'success');
-      toast('解析完成');
-      setTimeout(() => {
-        logWindow.remove();
-        goto(`song/${song.id}`);
-      }, 1000);
-    } else {
-      log(`⚠️ 响应中没有 analysis_id`, 'warning');
-      throw new Error('解析结果不完整');
+    const finishReason = data.choices?.[0]?.finish_reason || '';
+    if (finishReason === 'length') {
+      log(`⚠️ 响应被截断 (finish_reason: length)，请求数量可能不足`, 'warning');
     }
+
+    const text = data.choices?.[0]?.message?.content 
+      || data.choices?.[0]?.message?.reasoning_content
+      || data?.result 
+      || data?.content 
+      || data?.response 
+      || data?.output?.text 
+      || data?.output 
+      || '';
+    if (!text) {
+      log('❌ AI 返回内容为空', 'error');
+      log('💡 响应完整结构:', 'warning');
+      log(JSON.stringify(data, null, 2), 'warning');
+      throw new Error('AI 返回内容为空，请检查API响应格式是否匹配。当前支持的格式：choices[0].message.content、result、content、response、output.text');
+    }
+
+    log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
+    log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
+
+    let parsed = repairBrokenJSON(text);
+    if (parsed) {
+      const isTruncated = finishReason === 'length';
+      if (isTruncated) {
+        log(`⚠️ 响应被截断但已自动修复，部分歌词可能未解析`, 'warning');
+      } else {
+        log(`✅ JSON 解析成功`, 'success');
+      }
+    } else {
+      log(`❌ JSON 解析失败，无法修复`, 'error');
+      log(`📝 原始内容: ${text.slice(0, 300)}${text.length > 300 ? '...' : ''}`, 'error');
+      if (finishReason === 'length') {
+        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型`, 'warning');
+        throw new Error(`JSON 解析失败（响应被截断）`);
+      }
+      throw new Error(`JSON 解析失败`);
+    }
+
+    const analysis = { lines: [], sentences: [] };
+    if (parsed.lines) {
+      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn }));
+      const totalLines = song.lyrics_raw.length;
+      const parsedLines = analysis.lines.length;
+      if (parsedLines < totalLines) {
+        log(`⚠️ 部分解析: ${parsedLines}/${totalLines} 行（输出被截断）`, 'warning');
+      } else {
+        log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
+      }
+    } else {
+      log('❌ AI 返回格式不符合预期', 'error');
+      throw new Error('AI 返回格式不符合预期');
+    }
+
+    if (analysis.lines.length === 0) {
+      log('❌ 没有解析出任何行', 'error');
+      throw new Error('没有解析出任何歌词行');
+    }
+
+    if (btn) btn.textContent = '正在保存到 GitHub… 80%';
+    const analysisId = `${song.id}_${Date.now()}`;
+    await saveAnalysisToGitHub(song, analysis, analysisId);
+    log(`🎉 解析完成！analysis_id: ${analysisId}`, 'success');
+    toast('解析完成');
+    setTimeout(() => {
+      logWindow.remove();
+      goto(`song/${song.id}`);
+    }, 1000);
 
   } catch (err) {
     log(`❌ 错误: ${err.message}`, 'error');
