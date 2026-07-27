@@ -1005,7 +1005,40 @@ async function deleteSong(song) {
       throw new Error(err.message || `更新 index.json 失败 (HTTP ${putRes.status})`);
     }
 
-    updateDeleteProgress(70, '等待同步');
+    updateDeleteProgress(70, '删除解析文件');
+    const analysisDirPath = `data/analysis/${song.id}`;
+    const analysisDirRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${analysisDirPath}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'jplearn-app'
+      }
+    });
+    if (analysisDirRes.ok) {
+      const analysisFiles = await analysisDirRes.json();
+      for (const file of analysisFiles) {
+        const deleteFileRes = await fetch(`https://api.github.com/repos/Ancenchan/jplearn/contents/${file.path}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'jplearn-app',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `删除解析文件: ${file.name}`,
+            sha: file.sha,
+            branch: 'main'
+          })
+        });
+        if (!deleteFileRes.ok) {
+          const err = await deleteFileRes.json().catch(() => ({}));
+          console.warn(`删除解析文件 ${file.name} 失败: ${err.message || deleteFileRes.status}`);
+        }
+      }
+    }
+
+    updateDeleteProgress(80, '等待同步');
     await waitForDeletion(song.id);
 
     updateDeleteProgress(100, '删除完成');
@@ -1364,11 +1397,15 @@ function openApiConfigDialog(onSaved) {
     $('#cfg-url', wrap).value = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
     $('#cfg-model', wrap).value = 'glm-4.5-air';
   });
-  $('#cfg-test', wrap).addEventListener('click', () => {
+  $('#cfg-test', wrap).addEventListener('click', async () => {
     const url = $('#cfg-url', wrap).value.trim();
     const key = $('#cfg-key', wrap).value.trim();
     const model = $('#cfg-model', wrap).value.trim();
-    testApiConnection(url, key, model, $('#cfg-test-result', wrap));
+    const result = await testApiConnection(url, key, model, $('#cfg-test-result', wrap));
+    if (result === 'success') {
+      setApiConfig({ apiUrl: url, apiKey: key, model });
+      toast('配置已自动保存');
+    }
   });
   $('#cfg-save', wrap).addEventListener('click', () => {
     setApiConfig({
@@ -1384,7 +1421,7 @@ function openApiConfigDialog(onSaved) {
 async function testApiConnection(apiUrl, apiKey, model, resultEl) {
   if (!apiUrl || !apiKey || !model) {
     if (resultEl) resultEl.innerHTML = '<span style="color:#E8637E;">请填写完整配置后再测试</span>';
-    return;
+    return 'error';
   }
 
   if (resultEl) {
@@ -1428,7 +1465,7 @@ async function testApiConnection(apiUrl, apiKey, model, resultEl) {
       if (resultEl) {
         resultEl.innerHTML = `<span style="color:#E8637E;">❌ 连接失败 (${res.status}): ${errorDetail || '服务器返回错误'}</span>`;
       }
-      return;
+      return 'error';
     }
 
     let data;
@@ -1440,7 +1477,7 @@ async function testApiConnection(apiUrl, apiKey, model, resultEl) {
         resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">Content-Type: ${contentType}</span>`;
         resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">原始响应: "${rawText.slice(0, 100)}"</span>`;
       }
-      return;
+      return 'error';
     }
 
     const text = data.choices?.[0]?.message?.content 
@@ -1459,10 +1496,12 @@ async function testApiConnection(apiUrl, apiKey, model, resultEl) {
         resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">响应结构: ${JSON.stringify(Object.keys(data))}</span>`;
         resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">原始响应预览: "${rawText.slice(0, 200)}"</span>`;
       }
+      return 'error';
     } else {
       if (resultEl) {
         resultEl.innerHTML = `<span style="color:#2FAE97;">✅ 连接成功！返回内容: "${text.trim().slice(0, 50)}"</span>`;
       }
+      return 'success';
     }
   } catch (err) {
     clearTimeout(timeoutId);
@@ -1474,6 +1513,7 @@ async function testApiConnection(apiUrl, apiKey, model, resultEl) {
         resultEl.innerHTML += `<br><span style="font-size:10px;color:#837E9E;">💡 提示：可能遇到CORS跨域限制，需要通过Worker代理</span>`;
       }
     }
+    return 'error';
   }
 }
 

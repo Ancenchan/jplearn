@@ -84,7 +84,9 @@ async function handleUtatenImport(request, env) {
 
   const lyricsWithFurigana = extractLyricsWithFurigana(html);
 
-  const title = titleMatch ? decodeHtml(titleMatch[1]).split('/')[0].trim() : '未命名歌曲';
+  let title = titleMatch ? decodeHtml(titleMatch[1]).split('/')[0].trim() : '未命名歌曲';
+  title = title.replace(/歌詞.*$/i, '').replace(/ふりがな付.*$/i, '').replace(/-\s*うたてん.*$/i, '').trim();
+  title = title.replace(/\s+/g, ' ').trim();
   const song = await createSongRecord(env, {
     title, artist: '', lyrics_raw: lyricsRaw, lyrics_with_furigana: lyricsWithFurigana, source: url, note: 'Utaten自动导入'
   });
