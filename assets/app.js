@@ -1178,45 +1178,46 @@ async function saveAnalysisToGitHub(song, analysis, versionId) {
 
 // ---------- AI 解析 ----------
 async function startParse(song, { rerun }) {
-  const cfg = getApiConfig();
-  if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
-    openApiConfigDialog(() => startParse(song, { rerun }));
-    return;
-  }
+  openApiConfigDialog(async () => {
+    const cfg = getApiConfig();
+    if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
+      toast('请填写完整的 API 配置');
+      return;
+    }
 
-  const logWindow = el(`
-    <div class="ai-log-window">
-      <div class="log-header">
-        <span class="log-title">AI 解析日志</span>
-        <button class="log-close" type="button">×</button>
+    const logWindow = el(`
+      <div class="ai-log-window">
+        <div class="log-header">
+          <span class="log-title">AI 解析日志</span>
+          <button class="log-close" type="button">×</button>
+        </div>
+        <div class="log-body" id="ai-log-content"></div>
       </div>
-      <div class="log-body" id="ai-log-content"></div>
-    </div>
-  `);
-  document.body.appendChild(logWindow);
-  logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
+    `);
+    document.body.appendChild(logWindow);
+    logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
 
-  function log(msg, type = 'info') {
-    const content = $('#ai-log-content');
-    if (!content) return;
-    const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
-    content.appendChild(line);
-    content.scrollTop = content.scrollHeight;
-    console.log(`[AI解析] ${msg}`);
-  }
+    function log(msg, type = 'info') {
+      const content = $('#ai-log-content');
+      if (!content) return;
+      const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
+      content.appendChild(line);
+      content.scrollTop = content.scrollHeight;
+      console.log(`[AI解析] ${msg}`);
+    }
 
-  const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '🤖 AI 解析中…'; }
+    const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '🤖 AI 解析中…'; }
 
-  log(`⏳ 开始解析「${song.title}」`);
-  log(`📤 发送请求到: ${cfg.apiUrl}`);
-  log(`📊 模型: ${cfg.model}`);
-  log(`📝 歌词行数: ${song.lyrics_raw.length}`);
+    log(`⏳ 开始解析「${song.title}」`);
+    log(`📤 发送请求到: ${cfg.apiUrl}`);
+    log(`📊 模型: ${cfg.model}`);
+    log(`📝 歌词行数: ${song.lyrics_raw.length}`);
 
-  try {
-    const startTime = Date.now();
+    try {
+      const startTime = Date.now();
 
-    const prompt = `你是日语歌词语法教学助手。请分析以下日语歌词每行的语法结构，输出 JSON：
+      const prompt = `你是日语歌词语法教学助手。请分析以下日语歌词每行的语法结构，输出 JSON：
 
 ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 
@@ -1233,126 +1234,127 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 2.句末用"整句意为：……"收尾
 直接输出JSON，不要其他文字。`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
 
-    const res = await fetch(cfg.apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cfg.apiKey}`
-      },
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 16000 }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+      const res = await fetch(cfg.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${cfg.apiKey}`
+        },
+        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 16000 }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
-    const elapsed = Math.round((Date.now() - startTime) / 1000);
-    log(`✅ 请求完成 (${elapsed}s)`, 'success');
-    log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+      log(`✅ 请求完成 (${elapsed}s)`, 'success');
+      log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
 
-    if (!res.ok) {
-      let errorDetail = '';
-      try {
-        const errText = await res.text();
+      if (!res.ok) {
+        let errorDetail = '';
         try {
-          const errData = JSON.parse(errText);
-          errorDetail = errData.error?.message || errData.message || errText;
-        } catch {
-          errorDetail = errText || '';
+          const errText = await res.text();
+          try {
+            const errData = JSON.parse(errText);
+            errorDetail = errData.error?.message || errData.message || errText;
+          } catch {
+            errorDetail = errText || '';
+          }
+        } catch {}
+        const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
+        log(`❌ ${errMsg}`, 'error');
+        if (res.status === 404) {
+          log(`💡 404 通常意味着：1) API 地址 URL 路径错误；2) 模型名已弃用或不存在`, 'warning');
         }
-      } catch {}
-      const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
-      log(`❌ ${errMsg}`, 'error');
-      if (res.status === 404) {
-        log(`💡 404 通常意味着：1) API 地址 URL 路径错误；2) 模型名已弃用或不存在`, 'warning');
+        throw new Error(errMsg);
       }
-      throw new Error(errMsg);
-    }
 
-    const data = await res.json();
-    log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
-    log(`📥 响应预览: ${JSON.stringify(data).slice(0, 500)}${JSON.stringify(data).length > 500 ? '...' : ''}`, 'info');
+      const data = await res.json();
+      log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
+      log(`📥 响应预览: ${JSON.stringify(data).slice(0, 500)}${JSON.stringify(data).length > 500 ? '...' : ''}`, 'info');
 
-    const finishReason = data.choices?.[0]?.finish_reason || '';
-    if (finishReason === 'length') {
-      log(`⚠️ 响应被截断 (finish_reason: length)，请求数量可能不足`, 'warning');
-    }
-
-    const text = data.choices?.[0]?.message?.content 
-      || data.choices?.[0]?.message?.reasoning_content
-      || data?.result 
-      || data?.content 
-      || data?.response 
-      || data?.output?.text 
-      || data?.output 
-      || '';
-    if (!text) {
-      log('❌ AI 返回内容为空', 'error');
-      log('💡 响应完整结构:', 'warning');
-      log(JSON.stringify(data, null, 2), 'warning');
-      throw new Error('AI 返回内容为空，请检查API响应格式是否匹配。当前支持的格式：choices[0].message.content、result、content、response、output.text');
-    }
-
-    log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
-    log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
-
-    let parsed = repairBrokenJSON(text);
-    if (parsed) {
-      const isTruncated = finishReason === 'length';
-      if (isTruncated) {
-        log(`⚠️ 响应被截断但已自动修复，部分歌词可能未解析`, 'warning');
-      } else {
-        log(`✅ JSON 解析成功`, 'success');
-      }
-    } else {
-      log(`❌ JSON 解析失败，无法修复`, 'error');
-      log(`📝 原始内容: ${text.slice(0, 300)}${text.length > 300 ? '...' : ''}`, 'error');
+      const finishReason = data.choices?.[0]?.finish_reason || '';
       if (finishReason === 'length') {
-        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型`, 'warning');
-        throw new Error(`JSON 解析失败（响应被截断）`);
+        log(`⚠️ 响应被截断 (finish_reason: length)，请求数量可能不足`, 'warning');
       }
-      throw new Error(`JSON 解析失败`);
-    }
 
-    const analysis = { lines: [], sentences: [] };
-    if (parsed.lines) {
-      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn }));
-      const totalLines = song.lyrics_raw.length;
-      const parsedLines = analysis.lines.length;
-      if (parsedLines < totalLines) {
-        log(`⚠️ 部分解析: ${parsedLines}/${totalLines} 行（输出被截断）`, 'warning');
+      const text = data.choices?.[0]?.message?.content 
+        || data.choices?.[0]?.message?.reasoning_content
+        || data?.result 
+        || data?.content 
+        || data?.response 
+        || data?.output?.text 
+        || data?.output 
+        || '';
+      if (!text) {
+        log('❌ AI 返回内容为空', 'error');
+        log('💡 响应完整结构:', 'warning');
+        log(JSON.stringify(data, null, 2), 'warning');
+        throw new Error('AI 返回内容为空，请检查API响应格式是否匹配。当前支持的格式：choices[0].message.content、result、content、response、output.text');
+      }
+
+      log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
+      log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
+
+      let parsed = repairBrokenJSON(text);
+      if (parsed) {
+        const isTruncated = finishReason === 'length';
+        if (isTruncated) {
+          log(`⚠️ 响应被截断但已自动修复，部分歌词可能未解析`, 'warning');
+        } else {
+          log(`✅ JSON 解析成功`, 'success');
+        }
       } else {
-        log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
+        log(`❌ JSON 解析失败，无法修复`, 'error');
+        log(`📝 原始内容: ${text.slice(0, 300)}${text.length > 300 ? '...' : ''}`, 'error');
+        if (finishReason === 'length') {
+          log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型`, 'warning');
+          throw new Error(`JSON 解析失败（响应被截断）`);
+        }
+        throw new Error(`JSON 解析失败`);
       }
-    } else {
-      log('❌ AI 返回格式不符合预期', 'error');
-      throw new Error('AI 返回格式不符合预期');
+
+      const analysis = { lines: [], sentences: [] };
+      if (parsed.lines) {
+        parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn }));
+        const totalLines = song.lyrics_raw.length;
+        const parsedLines = analysis.lines.length;
+        if (parsedLines < totalLines) {
+          log(`⚠️ 部分解析: ${parsedLines}/${totalLines} 行（输出被截断）`, 'warning');
+        } else {
+          log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
+        }
+      } else {
+        log('❌ AI 返回格式不符合预期', 'error');
+        throw new Error('AI 返回格式不符合预期');
+      }
+
+      if (analysis.lines.length === 0) {
+        log('❌ 没有解析出任何行', 'error');
+        throw new Error('没有解析出任何歌词行');
+      }
+
+      if (btn) btn.textContent = '正在保存到 GitHub… 80%';
+      const analysisId = `${song.id}_${Date.now()}`;
+      await saveAnalysisToGitHub(song, analysis, analysisId);
+      if (btn) btn.textContent = '保存完成 100%';
+      log(`🎉 解析完成！analysis_id: ${analysisId}`, 'success');
+      toast('解析完成');
+      setTimeout(() => {
+        logWindow.remove();
+        goto(`song/${song.id}`);
+      }, 1000);
+
+    } catch (err) {
+      log(`❌ 错误: ${err.message}`, 'error');
+      toast(`解析失败：${err.message}`);
+      if (btn) { btn.disabled = false; btn.textContent = rerun ? '✨ 用新版本重新解析' : '✨ 开始AI解析'; }
     }
 
-    if (analysis.lines.length === 0) {
-      log('❌ 没有解析出任何行', 'error');
-      throw new Error('没有解析出任何歌词行');
-    }
-
-    if (btn) btn.textContent = '正在保存到 GitHub… 80%';
-    const analysisId = `${song.id}_${Date.now()}`;
-    await saveAnalysisToGitHub(song, analysis, analysisId);
-    if (btn) btn.textContent = '保存完成 100%';
-    log(`🎉 解析完成！analysis_id: ${analysisId}`, 'success');
-    toast('解析完成');
-    setTimeout(() => {
-      logWindow.remove();
-      goto(`song/${song.id}`);
-    }, 1000);
-
-  } catch (err) {
-    log(`❌ 错误: ${err.message}`, 'error');
-    toast(`解析失败：${err.message}`);
-    if (btn) { btn.disabled = false; btn.textContent = rerun ? '✨ 用新版本重新解析' : '✨ 开始AI解析'; }
-  }
-
-  $('#ai-log-window .log-close')?.addEventListener('click', () => logWindow.remove());
+    $('#ai-log-window .log-close')?.addEventListener('click', () => logWindow.remove());
+  });
 }
 
 function openApiConfigDialog(onSaved) {
@@ -1397,15 +1399,11 @@ function openApiConfigDialog(onSaved) {
     $('#cfg-url', wrap).value = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
     $('#cfg-model', wrap).value = 'glm-4.5-air';
   });
-  $('#cfg-test', wrap).addEventListener('click', async () => {
+  $('#cfg-test', wrap).addEventListener('click', () => {
     const url = $('#cfg-url', wrap).value.trim();
     const key = $('#cfg-key', wrap).value.trim();
     const model = $('#cfg-model', wrap).value.trim();
-    const result = await testApiConnection(url, key, model, $('#cfg-test-result', wrap));
-    if (result === 'success') {
-      setApiConfig({ apiUrl: url, apiKey: key, model });
-      toast('配置已自动保存');
-    }
+    testApiConnection(url, key, model, $('#cfg-test-result', wrap));
   });
   $('#cfg-save', wrap).addEventListener('click', () => {
     setApiConfig({
