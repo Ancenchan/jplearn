@@ -1,16 +1,6 @@
 {
   "songs": [
     {
-      "id": "song002",
-      "title": "打上花火",
-      "artist": "DAOKO × 米津玄師",
-      "aliases": [
-        "打上花火",
-        "Uchiage Hanabi"
-      ],
-      "analysis_count": 1
-    },
-    {
       "id": "song003",
       "title": "紅蓮華",
       "artist": "LiSA",
