@@ -324,7 +324,7 @@ async function renderSongList(query) {
         <div class="song-info">
           <div class="song-title">${escapeHtml(s.title)}</div>
           <div class="song-artist">${escapeHtml(s.artist)}</div>
-          <div class="song-meta ${s.analysis_count ? '' : 'empty'}">
+          <div class="song-meta ${s.analysis_count ? '' : 'empty'}" id="meta-${s.id}">
             ${s.analysis_count ? `已有解析 · ${s.analysis_count}个版本` : '暂无解析 · 待创建'}
           </div>
         </div>
@@ -333,6 +333,33 @@ async function renderSongList(query) {
     `).join('');
     list.querySelectorAll('.song-card').forEach(card => {
       card.addEventListener('click', () => goto(`song/${card.dataset.id}`));
+    });
+
+    songs.forEach(async s => {
+      if (!s.analysis_count) {
+        try {
+          const analysisDir = await fetch(`${DATA_BASE}/analysis/${s.id}`, { cache: 'no-cache' });
+          if (analysisDir.ok) {
+            const entries = await analysisDir.json();
+            if (entries.length > 0) {
+              const metaEl = $(`#meta-${s.id}`);
+              if (metaEl) {
+                metaEl.textContent = `已有解析 · ${entries.filter(e => e.name.endsWith('.json')).length / 2}个版本`;
+                metaEl.classList.remove('empty');
+                metaEl.parentElement.parentElement.classList.remove('no-analysis');
+              }
+              if (state.index) {
+                const entry = state.index.songs.find(entry => entry.id === s.id);
+                if (entry) {
+                  entry.analysis_count = Math.floor(entries.filter(e => e.name.endsWith('.json')).length / 2);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.debug(`检查解析目录失败 ${s.id}:`, err);
+        }
+      }
     });
   } catch (err) {
     list.innerHTML = `<div class="empty-sub" style="padding:30px 0;">加载歌曲列表失败：${err.message}</div>`;
