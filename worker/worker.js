@@ -84,11 +84,26 @@ async function handleUtatenImport(request, env) {
 
   const lyricsWithFurigana = extractLyricsWithFurigana(html);
 
-  let title = titleMatch ? decodeHtml(titleMatch[1]).split('/')[0].trim() : '未命名歌曲';
-  title = title.replace(/歌詞.*$/i, '').replace(/ふりがな付.*$/i, '').replace(/-\s*うたてん.*$/i, '').trim();
+  let rawTitle = titleMatch ? decodeHtml(titleMatch[1]).split('/')[0].trim() : '未命名歌曲';
+  // Format: "ULTRA C 歌詞 Vivid BAD SQUAD ふりがな付 - うたてん"
+  // 歌名 = "歌詞"之前，歌手 = "歌詞"与"ふりがな付"之间，去掉"ふりがな付 - うたてん"
+  let title = rawTitle;
+  let artist = '';
+  const lyricsIdx = rawTitle.indexOf('歌詞');
+  if (lyricsIdx !== -1) {
+    title = rawTitle.slice(0, lyricsIdx).trim();
+    let afterLyrics = rawTitle.slice(lyricsIdx + 2);
+    const furiganaIdx = afterLyrics.indexOf('ふりがな付');
+    if (furiganaIdx !== -1) {
+      artist = afterLyrics.slice(0, furiganaIdx).trim();
+    } else {
+      artist = afterLyrics.replace(/-\s*うたてん.*$/i, '').trim();
+    }
+  }
   title = title.replace(/\s+/g, ' ').trim();
+  artist = artist.replace(/\s+/g, ' ').trim();
   const song = await createSongRecord(env, {
-    title, artist: '', lyrics_raw: lyricsRaw, lyrics_with_furigana: lyricsWithFurigana, source: url, note: 'Utaten自动导入'
+    title, artist, lyrics_raw: lyricsRaw, lyrics_with_furigana: lyricsWithFurigana, source: url, note: 'Utaten自动导入'
   });
   return json({ id: song.id, song });
 }
