@@ -1,0 +1,826 @@
+{
+  "id": "song571177",
+  "title": "なりすましゲンガー",
+  "artist": "KulfiQ feat. 鏡音リン,初音ミク",
+  "aliases": [],
+  "source": "https://utaten.com/lyric/jb51207033/",
+  "note": "Utaten自动导入",
+  "created_at": "2026-08-05T04:52:51.177Z",
+  "lyrics_raw": [
+    "僕はゲンガー いつもこうやって後ろ向いて指を咥えて",
+    "どうせあっちに行ってもこっちに行ってもニッチもサッチも誰かの",
+    "影に隠れたままなんでしょ",
+    "「おばあさん、この席どうぞ」 僕は椅子に座ったままです",
+    "「あら、どうも助かりました」 見て見ぬフリ、フリ、あぁん",
+    "最近の若者達は、なんてよく聞きますけれど",
+    "何を隠そうワタクシこそが その最たる例なのです",
+    "こわい、こわい、他人の心の奥底",
+    "いない、いない、いない、誰の目にも入らない",
+    "僕はゲンガー、いつもこうやって後ろ指刺されて笑われて",
+    "そんな行ったり来たりの人生なんて日の光を浴びないから",
+    "何度も影踏みするんだ",
+    "さみしがり屋の僕の口癖",
+    "「あいつみたいになんてなれないよ」",
+    "ほら、キミ、と僕の距離がまた開いて、追いつけないんだ",
+    "ひとりぼっち、誰もいなくて",
+    "孤独な夜を何度も明かした",
+    "部屋の隅っこぽつんと咲く花に",
+    "勇気をもらった",
+    "君の心の中、覗いて",
+    "忘れ物を見つけました",
+    "僕は喜怒哀楽の感情が足りない",
+    "不完全な存在です",
+    "明日、また太陽昇って",
+    "陰と陽の境界できたら",
+    "やっぱ、逃げ続けるだけの人生なんでしょう",
+    "なりすましゲンガー、そうだこうやって、君の影にずっと隠れて",
+    "いつか照らされてこのまま消えちゃえば、それでいいな"
+  ],
+  "lyrics_with_furigana": [
+    [
+      {
+        "text": "          ",
+        "furigana": ""
+      },
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "はゲンガー いつもこうやって",
+        "furigana": ""
+      },
+      {
+        "text": "後",
+        "furigana": "うし"
+      },
+      {
+        "text": "ろ",
+        "furigana": ""
+      },
+      {
+        "text": "向",
+        "furigana": "む"
+      },
+      {
+        "text": "いて",
+        "furigana": ""
+      },
+      {
+        "text": "指",
+        "furigana": "ゆび"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "咥",
+        "furigana": "くわ"
+      },
+      {
+        "text": "えて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "どうせあっちに",
+        "furigana": ""
+      },
+      {
+        "text": "行",
+        "furigana": "い"
+      },
+      {
+        "text": "ってもこっちに",
+        "furigana": ""
+      },
+      {
+        "text": "行",
+        "furigana": "い"
+      },
+      {
+        "text": "ってもニッチもサッチも",
+        "furigana": ""
+      },
+      {
+        "text": "誰",
+        "furigana": "だれ"
+      },
+      {
+        "text": "かの",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "影",
+        "furigana": "かげ"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      },
+      {
+        "text": "隠",
+        "furigana": "かく"
+      },
+      {
+        "text": "れたままなんでしょ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "「おばあさん、この",
+        "furigana": ""
+      },
+      {
+        "text": "席",
+        "furigana": "せき"
+      },
+      {
+        "text": "どうぞ」 ",
+        "furigana": ""
+      },
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "は",
+        "furigana": ""
+      },
+      {
+        "text": "椅子",
+        "furigana": "いす"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      },
+      {
+        "text": "座",
+        "furigana": "すわ"
+      },
+      {
+        "text": "ったままです",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "「あら、どうも",
+        "furigana": ""
+      },
+      {
+        "text": "助",
+        "furigana": "たす"
+      },
+      {
+        "text": "かりました」 ",
+        "furigana": ""
+      },
+      {
+        "text": "見",
+        "furigana": "み"
+      },
+      {
+        "text": "て",
+        "furigana": ""
+      },
+      {
+        "text": "見",
+        "furigana": "み"
+      },
+      {
+        "text": "ぬフリ、フリ、あぁん",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "最近",
+        "furigana": "さいきん"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "若者達",
+        "furigana": "わかものたち"
+      },
+      {
+        "text": "は、なんてよく",
+        "furigana": ""
+      },
+      {
+        "text": "聞",
+        "furigana": "き"
+      },
+      {
+        "text": "きますけれど",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "何",
+        "furigana": "なに"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "隠",
+        "furigana": "かく"
+      },
+      {
+        "text": "そうワタクシこそが その",
+        "furigana": ""
+      },
+      {
+        "text": "最",
+        "furigana": "さい"
+      },
+      {
+        "text": "たる",
+        "furigana": ""
+      },
+      {
+        "text": "例",
+        "furigana": "れい"
+      },
+      {
+        "text": "なのです",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "こわい、こわい、",
+        "furigana": ""
+      },
+      {
+        "text": "他人",
+        "furigana": "たにん"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "心",
+        "furigana": "こころ"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "奥底",
+        "furigana": "おくそこ"
+      }
+    ],
+    [
+      {
+        "text": "いない、いない、いない、",
+        "furigana": ""
+      },
+      {
+        "text": "誰",
+        "furigana": "だれ"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "目",
+        "furigana": "め"
+      },
+      {
+        "text": "にも",
+        "furigana": ""
+      },
+      {
+        "text": "入",
+        "furigana": "はい"
+      },
+      {
+        "text": "らない",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "はゲンガー、いつもこうやって",
+        "furigana": ""
+      },
+      {
+        "text": "後",
+        "furigana": "うし"
+      },
+      {
+        "text": "ろ",
+        "furigana": ""
+      },
+      {
+        "text": "指刺",
+        "furigana": "ゆびさ"
+      },
+      {
+        "text": "されて",
+        "furigana": ""
+      },
+      {
+        "text": "笑",
+        "furigana": "わら"
+      },
+      {
+        "text": "われて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "そんな",
+        "furigana": ""
+      },
+      {
+        "text": "行",
+        "furigana": "い"
+      },
+      {
+        "text": "ったり",
+        "furigana": ""
+      },
+      {
+        "text": "来",
+        "furigana": "き"
+      },
+      {
+        "text": "たりの",
+        "furigana": ""
+      },
+      {
+        "text": "人生",
+        "furigana": "じんせい"
+      },
+      {
+        "text": "なんて",
+        "furigana": ""
+      },
+      {
+        "text": "日",
+        "furigana": "ひ"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "光",
+        "furigana": "ひかり"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "浴",
+        "furigana": "あ"
+      },
+      {
+        "text": "びないから",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "何度",
+        "furigana": "なんど"
+      },
+      {
+        "text": "も",
+        "furigana": ""
+      },
+      {
+        "text": "影踏",
+        "furigana": "かげふ"
+      },
+      {
+        "text": "みするんだ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "さみしがり",
+        "furigana": ""
+      },
+      {
+        "text": "屋",
+        "furigana": "や"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "口癖",
+        "furigana": "くちぐせ"
+      }
+    ],
+    [
+      {
+        "text": "「あいつみたいになんてなれないよ」",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "ほら、キミ、と",
+        "furigana": ""
+      },
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "距離",
+        "furigana": "きょり"
+      },
+      {
+        "text": "がまた",
+        "furigana": ""
+      },
+      {
+        "text": "開",
+        "furigana": "ひら"
+      },
+      {
+        "text": "いて、",
+        "furigana": ""
+      },
+      {
+        "text": "追",
+        "furigana": "お"
+      },
+      {
+        "text": "いつけないんだ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "ひとりぼっち、",
+        "furigana": ""
+      },
+      {
+        "text": "誰",
+        "furigana": "だれ"
+      },
+      {
+        "text": "もいなくて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "孤独",
+        "furigana": "こどく"
+      },
+      {
+        "text": "な",
+        "furigana": ""
+      },
+      {
+        "text": "夜",
+        "furigana": "よる"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "何度",
+        "furigana": "なんど"
+      },
+      {
+        "text": "も",
+        "furigana": ""
+      },
+      {
+        "text": "明",
+        "furigana": "あ"
+      },
+      {
+        "text": "かした",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "部屋",
+        "furigana": "へや"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "隅",
+        "furigana": "すみ"
+      },
+      {
+        "text": "っこぽつんと",
+        "furigana": ""
+      },
+      {
+        "text": "咲",
+        "furigana": "さ"
+      },
+      {
+        "text": "く",
+        "furigana": ""
+      },
+      {
+        "text": "花",
+        "furigana": "はな"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "勇気",
+        "furigana": "ゆうき"
+      },
+      {
+        "text": "をもらった",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "君",
+        "furigana": "きみ"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "心",
+        "furigana": "こころ"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "中",
+        "furigana": "なか"
+      },
+      {
+        "text": "、",
+        "furigana": ""
+      },
+      {
+        "text": "覗",
+        "furigana": "のぞ"
+      },
+      {
+        "text": "いて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "忘",
+        "furigana": "わす"
+      },
+      {
+        "text": "れ",
+        "furigana": ""
+      },
+      {
+        "text": "物",
+        "furigana": "もの"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "見",
+        "furigana": "み"
+      },
+      {
+        "text": "つけました",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "は",
+        "furigana": ""
+      },
+      {
+        "text": "喜怒哀楽",
+        "furigana": "きどあいらく"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "感情",
+        "furigana": "かんじょう"
+      },
+      {
+        "text": "が",
+        "furigana": ""
+      },
+      {
+        "text": "足",
+        "furigana": "た"
+      },
+      {
+        "text": "りない",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "不完全",
+        "furigana": "ふかんぜん"
+      },
+      {
+        "text": "な",
+        "furigana": ""
+      },
+      {
+        "text": "存在",
+        "furigana": "そんざい"
+      },
+      {
+        "text": "です",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "明日",
+        "furigana": "あした"
+      },
+      {
+        "text": "、また",
+        "furigana": ""
+      },
+      {
+        "text": "太陽昇",
+        "furigana": "たいようのぼ"
+      },
+      {
+        "text": "って",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "陰",
+        "furigana": "いん"
+      },
+      {
+        "text": "と",
+        "furigana": ""
+      },
+      {
+        "text": "陽",
+        "furigana": "よう"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "境界",
+        "furigana": "きょうかい"
+      },
+      {
+        "text": "できたら",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "やっぱ、",
+        "furigana": ""
+      },
+      {
+        "text": "逃",
+        "furigana": "に"
+      },
+      {
+        "text": "げ",
+        "furigana": ""
+      },
+      {
+        "text": "続",
+        "furigana": "つづ"
+      },
+      {
+        "text": "けるだけの",
+        "furigana": ""
+      },
+      {
+        "text": "人生",
+        "furigana": "じんせい"
+      },
+      {
+        "text": "なんでしょう",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "なりすましゲンガー、そうだこうやって、",
+        "furigana": ""
+      },
+      {
+        "text": "君",
+        "furigana": "きみ"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "影",
+        "furigana": "かげ"
+      },
+      {
+        "text": "にずっと",
+        "furigana": ""
+      },
+      {
+        "text": "隠",
+        "furigana": "かく"
+      },
+      {
+        "text": "れて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "いつか",
+        "furigana": ""
+      },
+      {
+        "text": "照",
+        "furigana": "て"
+      },
+      {
+        "text": "らされてこのまま",
+        "furigana": ""
+      },
+      {
+        "text": "消",
+        "furigana": "き"
+      },
+      {
+        "text": "えちゃえば、それでいいな",
+        "furigana": ""
+      }
+    ]
+  ],
+  "analysis_versions": []
+}
