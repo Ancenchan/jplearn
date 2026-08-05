@@ -1646,11 +1646,12 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     await saveAnalysisToGitHub(song, analysis, analysisId);
     if (btn) btn.textContent = '保存完成 100%';
     log(`🎉 解析完成！analysis_id: ${analysisId}`, 'success');
-    toast('解析完成');
+    log(`⏳ 等待 GitHub Pages 同步，60秒后自动刷新页面…`, 'warning');
+    toast('解析完成，60秒后自动刷新页面');
     setTimeout(() => {
       logWindow.remove();
-      goto(`song/${song.id}`);
-    }, 1000);
+      location.reload();
+    }, 60000);
 
   } catch (err) {
     log(`❌ 错误: ${err.message}`, 'error');
