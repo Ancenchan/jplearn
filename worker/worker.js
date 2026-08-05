@@ -365,6 +365,12 @@ function tryParseJSON(text) {
   if (lastComplete > 0) {
     try { return JSON.parse(repaired.slice(0, lastComplete + 1)); } catch {}
   }
+
+  // 智能修复字符串内部未转义的双引号 (AI 最常见的错误)
+  try {
+    const quoteFixed = fixUnescapedQuotes(repaired);
+    try { return JSON.parse(quoteFixed); } catch {}
+  } catch {}
   
   // 尝试补全缺失的括号
   let stack = [];
@@ -389,7 +395,77 @@ function tryParseJSON(text) {
     }
     stack.pop();
   }
-  try { return JSON.parse(repaired); } catch { return null; }
+  try { return JSON.parse(repaired); } catch {}
+
+  // 最后再尝试一次带引号修复的括号补全
+  try {
+    const quoteFixed2 = fixUnescapedQuotes(repaired);
+    try { return JSON.parse(quoteFixed2); } catch {}
+  } catch {}
+
+  return null;
+}
+
+function fixUnescapedQuotes(jsonStr) {
+  let result = '';
+  let inString = false;
+  let escape = false;
+  let i = 0;
+  const len = jsonStr.length;
+
+  while (i < len) {
+    const ch = jsonStr[i];
+
+    if (escape) {
+      result += ch;
+      escape = false;
+      i++;
+      continue;
+    }
+
+    if (ch === '\\') {
+      result += ch;
+      escape = true;
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      if (!inString) {
+        inString = true;
+        result += ch;
+        i++;
+        continue;
+      }
+
+      let j = i + 1;
+      while (j < len && /\s/.test(jsonStr[j])) {
+        j++;
+      }
+      const nextNonSpace = j < len ? jsonStr[j] : '';
+
+      const isStructuralAfter = nextNonSpace === ',' 
+        || nextNonSpace === '}' 
+        || nextNonSpace === ']' 
+        || nextNonSpace === ':'
+        || nextNonSpace === '';
+
+      if (isStructuralAfter) {
+        inString = false;
+        result += ch;
+        i++;
+      } else {
+        result += '\\"';
+        i++;
+      }
+      continue;
+    }
+
+    result += ch;
+    i++;
+  }
+
+  return result;
 }
 
 async function callAI(apiUrl, apiKey, model, prompt) {

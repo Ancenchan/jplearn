@@ -59,6 +59,14 @@ const KANA_ROMAJI_MAP = {
   'じゃ':'ja','じゅ':'ju','じょ':'jo',
   'びゃ':'bya','びゅ':'byu','びょ':'byo',
   'ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+  // 外来语特殊音节（平假名）
+  'いぇ':'ye','きぇ':'kye','しぇ':'she','じぇ':'je','ちぇ':'che',
+  'ふぁ':'fa','ふぃ':'fi','ふぇ':'fe','ふぉ':'fo','ふゅ':'fyu',
+  'てぃ':'ti','でぃ':'di','てゅ':'tyu','でゅ':'dyu',
+  'とぅ':'tu','どぅ':'du','すぃ':'si','ずぃ':'zi',
+  'うぃ':'wi','うぇ':'we','うぉ':'wo',
+  'つぁ':'tsa','つぃ':'tsi','つぇ':'tse','つぉ':'tso',
+  // 片仮名
   'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
   'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
   'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
@@ -74,7 +82,7 @@ const KANA_ROMAJI_MAP = {
   'ダ':'da','ヂ':'ji','ヅ':'zu','デ':'de','ド':'do',
   'バ':'ba','ビ':'bi','ブ':'bu','ベ':'be','ボ':'bo',
   'パ':'pa','ピ':'pi','プ':'pu','ペ':'pe','ポ':'po',
-  'キャ':'kya','キュ':'kyu','キャ':'kya',
+  'キャ':'kya','キュ':'kyu','キョ':'kyo',
   'シャ':'sha','シュ':'shu','ショ':'sho',
   'チャ':'cha','チュ':'chu','チョ':'cho',
   'ニャ':'nya','ニュ':'nyu','ニョ':'nyo',
@@ -84,7 +92,18 @@ const KANA_ROMAJI_MAP = {
   'ギャ':'gya','ギュ':'gyu','ギョ':'gyo',
   'ジャ':'ja','ジュ':'ju','ジョ':'jo',
   'ビャ':'bya','ビュ':'byu','ビョ':'byo',
-  'ピャ':'pya','ピュ':'pyu','ピョ':'pyo'
+  'ピャ':'pya','ピュ':'pyu','ピョ':'pyo',
+  // 外来语特殊音节（片仮名）
+  'イェ':'ye','キェ':'kye','シェ':'she','ジェ':'je','チェ':'che',
+  'ファ':'fa','フィ':'fi','フェ':'fe','フォ':'fo','フュ':'fyu',
+  'ティ':'ti','ディ':'di','テュ':'tyu','デュ':'dyu',
+  'トゥ':'tu','ドゥ':'du','スィ':'si','ズィ':'zi',
+  'ウィ':'wi','ウェ':'we','ウォ':'wo',
+  'ツァ':'tsa','ツィ':'tsi','ツェ':'tse','ツォ':'tso',
+  'ヴァ':'va','ヴィ':'vi','ヴ':'vu','ヴェ':'ve','ヴォ':'vo','ヴュ':'vyu',
+  // 小写假名单独出现时的 fallback
+  'ぁ':'a','ぃ':'i','ぅ':'u','ぇ':'e','ぉ':'o','ゎ':'wa',
+  'ァ':'a','ィ':'i','ゥ':'u','ェ':'e','ォ':'o','ヮ':'wa'
 };
 function kanaToRomaji(kana) {
   if (!kana) return '';
@@ -224,6 +243,12 @@ function repairBrokenJSON(raw) {
   if (lastComplete > 0) {
     try { return JSON.parse(result.slice(0, lastComplete + 1)); } catch {}
   }
+
+  // 策略5: 智能修复字符串内部未转义的双引号 (AI 最常见的错误)
+  try {
+    const quoteFixed = fixUnescapedQuotes(result);
+    try { return JSON.parse(quoteFixed); } catch {}
+  } catch {}
   
   let repaired = result;
   let inStr = false;
@@ -257,10 +282,102 @@ function repairBrokenJSON(raw) {
     stack.pop();
   }
   
-  try { return JSON.parse(repaired); } catch (e) {
-    console.warn('JSON 修复失败:', e.message);
-    return null;
+  try { return JSON.parse(repaired); } catch {}
+
+  // 最后再尝试一次带引号修复的括号补全
+  try {
+    const quoteFixed2 = fixUnescapedQuotes(repaired);
+    try { return JSON.parse(quoteFixed2); } catch {}
+  } catch {}
+  
+  console.warn('JSON 修复失败');
+  return null;
+}
+
+/**
+ * 智能修复 JSON 字符串值内部未转义的双引号
+ * 核心思路：在字符串内部遇到 " 时，向前看跳过空白后的下一个非空白字符
+ * 如果是 , } ] : 则认为是真正的字符串结束引号
+ * 否则认为是字符串内部的引号，转义为 \"
+ */
+function fixUnescapedQuotes(jsonStr) {
+  let result = '';
+  let inString = false;
+  let escape = false;
+  let i = 0;
+  const len = jsonStr.length;
+
+  while (i < len) {
+    const ch = jsonStr[i];
+
+    if (escape) {
+      result += ch;
+      escape = false;
+      i++;
+      continue;
+    }
+
+    if (ch === '\\') {
+      result += ch;
+      escape = true;
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      if (!inString) {
+        // 进入字符串
+        inString = true;
+        result += ch;
+        i++;
+        continue;
+      }
+
+      // 在字符串内部遇到了一个双引号，需要判断是结束引号还是内部引号
+      // 向前看：跳过空白字符后的第一个非空白字符
+      let j = i + 1;
+      while (j < len && /\s/.test(jsonStr[j])) {
+        j++;
+      }
+      const nextNonSpace = j < len ? jsonStr[j] : '';
+
+      // 如果下一个非空白字符是 JSON 结构字符，则这是字符串结束引号
+      const isStructuralAfter = nextNonSpace === ',' 
+        || nextNonSpace === '}' 
+        || nextNonSpace === ']' 
+        || nextNonSpace === ':'
+        || nextNonSpace === '';
+
+      // 还要向后看：这个引号前面的字符是否是冒号（表示可能是 key 的结束）
+      // 回溯找到前一个非空白字符
+      let k = result.length - 1;
+      while (k >= 0 && /\s/.test(result[k])) {
+        k--;
+      }
+      const prevNonSpaceInResult = k >= 0 ? result[k] : '';
+      const isKeyValueColonBefore = prevNonSpaceInResult === ':';
+
+      // 如果是 key: 后的值开始，或者前面是 [ { , 开头，则这是一个新值的开始引号（不应该在这里出现，因为 inString=true）
+      // 更简单的判断：如果是字符串值结束后应该跟结构字符
+      if (isStructuralAfter) {
+        // 真正的结束引号
+        inString = false;
+        result += ch;
+        i++;
+      } else {
+        // 这是字符串内部未转义的引号，转义它
+        result += '\\"';
+        i++;
+      }
+      continue;
+    }
+
+    // 普通字符
+    result += ch;
+    i++;
   }
+
+  return result;
 }
 
 async function loadAnalysisBundle(songId, versionId) {
@@ -1261,7 +1378,7 @@ async function waitForDeletion(songId) {
 async function saveAnalysisToGitHub(song, analysis, versionId) {
   const token = getGitHubToken();
   if (!token) {
-    throw new Error('没有配置 GitHub Token，无法保存解析结果');
+    throw new Error('未配置 GitHub Token，无法保存。请点击右上角设置按钮配置 GitHub Token 后重试');
   }
 
   const GITHUB_API = 'https://api.github.com';
@@ -1359,46 +1476,50 @@ async function saveAnalysisToGitHub(song, analysis, versionId) {
 
 // ---------- AI 解析 ----------
 async function startParse(song, { rerun }) {
-  openApiConfigDialog(async () => {
-    const cfg = getApiConfig();
-    if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
-      toast('请填写完整的 API 配置');
-      return;
-    }
+  const cfg = getApiConfig();
+  if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
+    openApiConfigDialog(() => startParse(song, { rerun }));
+    return;
+  }
 
-    const logWindow = el(`
-      <div class="ai-log-window">
-        <div class="log-header">
-          <span class="log-title">AI 解析日志</span>
-          <button class="log-close" type="button"><iconify-icon icon="ant-design:close-outlined" width="16" height="16"></iconify-icon></button>
-        </div>
-        <div class="log-body" id="ai-log-content"></div>
+  const ghToken = getGitHubToken();
+  if (!ghToken) {
+    toast('⚠️ 未配置 GitHub Token，解析完成后将无法保存到 GitHub。请在设置中配置。');
+  }
+
+  const logWindow = el(`
+    <div class="ai-log-window">
+      <div class="log-header">
+        <span class="log-title">AI 解析日志</span>
+        <button class="log-close" type="button"><iconify-icon icon="ant-design:close-outlined" width="16" height="16"></iconify-icon></button>
       </div>
-    `);
-    document.body.appendChild(logWindow);
-    logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
+      <div class="log-body" id="ai-log-content"></div>
+    </div>
+  `);
+  document.body.appendChild(logWindow);
+  logWindow.querySelector('.log-close')?.addEventListener('click', () => logWindow.remove());
 
-    function log(msg, type = 'info') {
-      const content = $('#ai-log-content');
-      if (!content) return;
-      const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
-      content.appendChild(line);
-      content.scrollTop = content.scrollHeight;
-      console.log(`[AI解析] ${msg}`);
-    }
+  function log(msg, type = 'info') {
+    const content = $('#ai-log-content');
+    if (!content) return;
+    const line = el(`<div class="log-line log-${type}">${escapeHtml(msg)}</div>`);
+    content.appendChild(line);
+    content.scrollTop = content.scrollHeight;
+    console.log(`[AI解析] ${msg}`);
+  }
 
-    const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<iconify-icon icon="ant-design:robot-outlined" width="16" height="16"></iconify-icon> AI 解析中…'; }
+  const btn = rerun ? $('#reparse-btn') : $('#start-parse-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<iconify-icon icon="ant-design:robot-outlined" width="16" height="16"></iconify-icon> AI 解析中…'; }
 
-    log(`⏳ 开始解析「${song.title}」`);
-    log(`📤 发送请求到: ${cfg.apiUrl}`);
-    log(`📊 模型: ${cfg.model}`);
-    log(`📝 歌词行数: ${song.lyrics_raw.length}`);
+  log(`⏳ 开始解析「${song.title}」`);
+  log(`📤 发送请求到: ${cfg.apiUrl}`);
+  log(`📊 模型: ${cfg.model}`);
+  log(`📝 歌词行数: ${song.lyrics_raw.length}`);
 
-    try {
-      const startTime = Date.now();
+  try {
+    const startTime = Date.now();
 
-      const prompt = `你是日语歌词语法教学助手。请分析以下日语歌词每行的语法结构，输出 JSON：
+    const prompt = `你是日语歌词语法教学助手。请分析以下日语歌词每行的语法结构，输出 JSON：
 
 ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 
@@ -1415,127 +1536,126 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 2.句末用"整句意为：……"收尾
 直接输出JSON，不要其他文字。`;
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
 
-      const res = await fetch(cfg.apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${cfg.apiKey}`
-        },
-        body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 16000 }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+    const res = await fetch(cfg.apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`
+      },
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: prompt }], max_tokens: 16000 }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
 
-      const elapsed = Math.round((Date.now() - startTime) / 1000);
-      log(`✅ 请求完成 (${elapsed}s)`, 'success');
-      log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    log(`✅ 请求完成 (${elapsed}s)`, 'success');
+    log(`📡 HTTP 状态: ${res.status} ${res.statusText}`);
 
-      if (!res.ok) {
-        let errorDetail = '';
+    if (!res.ok) {
+      let errorDetail = '';
+      try {
+        const errText = await res.text();
         try {
-          const errText = await res.text();
-          try {
-            const errData = JSON.parse(errText);
-            errorDetail = errData.error?.message || errData.message || errText;
-          } catch {
-            errorDetail = errText || '';
-          }
-        } catch {}
-        const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
-        log(`❌ ${errMsg}`, 'error');
-        if (res.status === 404) {
-          log(`💡 404 通常意味着：1) API 地址 URL 路径错误；2) 模型名已弃用或不存在`, 'warning');
+          const errData = JSON.parse(errText);
+          errorDetail = errData.error?.message || errData.message || errText;
+        } catch {
+          errorDetail = errText || '';
         }
-        throw new Error(errMsg);
+      } catch {}
+      const errMsg = `AI 接口调用失败 (${res.status}): ${errorDetail || '服务器内部错误'}`;
+      log(`❌ ${errMsg}`, 'error');
+      if (res.status === 404) {
+        log(`💡 404 通常意味着：1) API 地址 URL 路径错误；2) 模型名已弃用或不存在`, 'warning');
       }
-
-      const data = await res.json();
-      log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
-      log(`📥 响应预览: ${JSON.stringify(data).slice(0, 500)}${JSON.stringify(data).length > 500 ? '...' : ''}`, 'info');
-
-      const finishReason = data.choices?.[0]?.finish_reason || '';
-      if (finishReason === 'length') {
-        log(`⚠️ 响应被截断 (finish_reason: length)，请求数量可能不足`, 'warning');
-      }
-
-      const text = data.choices?.[0]?.message?.content 
-        || data.choices?.[0]?.message?.reasoning_content
-        || data?.result 
-        || data?.content 
-        || data?.response 
-        || data?.output?.text 
-        || data?.output 
-        || '';
-      if (!text) {
-        log('❌ AI 返回内容为空', 'error');
-        log('💡 响应完整结构:', 'warning');
-        log(JSON.stringify(data, null, 2), 'warning');
-        throw new Error('AI 返回内容为空，请检查API响应格式是否匹配。当前支持的格式：choices[0].message.content、result、content、response、output.text');
-      }
-
-      log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
-      log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
-
-      let parsed = repairBrokenJSON(text);
-      if (parsed) {
-        const isTruncated = finishReason === 'length';
-        if (isTruncated) {
-          log(`⚠️ 响应被截断但已自动修复，部分歌词可能未解析`, 'warning');
-        } else {
-          log(`✅ JSON 解析成功`, 'success');
-        }
-      } else {
-        log(`❌ JSON 解析失败，无法修复`, 'error');
-        log(`📝 原始内容: ${text.slice(0, 300)}${text.length > 300 ? '...' : ''}`, 'error');
-        if (finishReason === 'length') {
-          log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型`, 'warning');
-          throw new Error(`JSON 解析失败（响应被截断）`);
-        }
-        throw new Error(`JSON 解析失败`);
-      }
-
-      const analysis = { lines: [], sentences: [] };
-      if (parsed.lines) {
-        parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn }));
-        const totalLines = song.lyrics_raw.length;
-        const parsedLines = analysis.lines.length;
-        if (parsedLines < totalLines) {
-          log(`⚠️ 部分解析: ${parsedLines}/${totalLines} 行（输出被截断）`, 'warning');
-        } else {
-          log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
-        }
-      } else {
-        log('❌ AI 返回格式不符合预期', 'error');
-        throw new Error('AI 返回格式不符合预期');
-      }
-
-      if (analysis.lines.length === 0) {
-        log('❌ 没有解析出任何行', 'error');
-        throw new Error('没有解析出任何歌词行');
-      }
-
-      if (btn) btn.textContent = '正在保存到 GitHub… 80%';
-      const analysisId = `${song.id}_${Date.now()}`;
-      await saveAnalysisToGitHub(song, analysis, analysisId);
-      if (btn) btn.textContent = '保存完成 100%';
-      log(`🎉 解析完成！analysis_id: ${analysisId}`, 'success');
-      toast('解析完成');
-      setTimeout(() => {
-        logWindow.remove();
-        goto(`song/${song.id}`);
-      }, 1000);
-
-    } catch (err) {
-      log(`❌ 错误: ${err.message}`, 'error');
-      toast(`解析失败：${err.message}`);
-      if (btn) { btn.disabled = false; btn.innerHTML = rerun ? '<iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> 用新版本重新解析' : '<iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> 开始AI解析'; }
+      throw new Error(errMsg);
     }
 
-    $('#ai-log-window .log-close')?.addEventListener('click', () => logWindow.remove());
-  });
+    const data = await res.json();
+    log(`📥 响应结构: ${JSON.stringify(Object.keys(data))}`, 'success');
+    log(`📥 响应预览: ${JSON.stringify(data).slice(0, 500)}${JSON.stringify(data).length > 500 ? '...' : ''}`, 'info');
+
+    const finishReason = data.choices?.[0]?.finish_reason || '';
+    if (finishReason === 'length') {
+      log(`⚠️ 响应被截断 (finish_reason: length)，请求数量可能不足`, 'warning');
+    }
+
+    const text = data.choices?.[0]?.message?.content 
+      || data.choices?.[0]?.message?.reasoning_content
+      || data?.result 
+      || data?.content 
+      || data?.response 
+      || data?.output?.text 
+      || data?.output 
+      || '';
+    if (!text) {
+      log('❌ AI 返回内容为空', 'error');
+      log('💡 响应完整结构:', 'warning');
+      log(JSON.stringify(data, null, 2), 'warning');
+      throw new Error('AI 返回内容为空，请检查API响应格式是否匹配。当前支持的格式：choices[0].message.content、result、content、response、output.text');
+    }
+
+    log(`📝 AI 返回长度: ${text.length} 字符`, 'success');
+    log(`📝 AI 返回开头: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}`, 'info');
+
+    let parsed = repairBrokenJSON(text);
+    if (parsed) {
+      const isTruncated = finishReason === 'length';
+      if (isTruncated) {
+        log(`⚠️ 响应被截断但已自动修复，部分歌词可能未解析`, 'warning');
+      } else {
+        log(`✅ JSON 解析成功`, 'success');
+      }
+    } else {
+      log(`❌ JSON 解析失败，无法修复`, 'error');
+      log(`📝 原始内容: ${text.slice(0, 300)}${text.length > 300 ? '...' : ''}`, 'error');
+      if (finishReason === 'length') {
+        log(`💡 建议：响应被截断导致JSON不完整。请尝试：1) 减少歌词行数；2) 使用支持更长输出的模型`, 'warning');
+        throw new Error(`JSON 解析失败（响应被截断）`);
+      }
+      throw new Error(`JSON 解析失败`);
+    }
+
+    const analysis = { lines: [], sentences: [] };
+    if (parsed.lines) {
+      parsed.lines.forEach(l => analysis.lines.push({ index: l.index, text: l.text || song.lyrics_raw[l.index] || '', translation_cn: l.translation_cn }));
+      const totalLines = song.lyrics_raw.length;
+      const parsedLines = analysis.lines.length;
+      if (parsedLines < totalLines) {
+        log(`⚠️ 部分解析: ${parsedLines}/${totalLines} 行（输出被截断）`, 'warning');
+      } else {
+        log(`✅ 解析完成: ${analysis.lines.length} 行`, 'success');
+      }
+    } else {
+      log('❌ AI 返回格式不符合预期', 'error');
+      throw new Error('AI 返回格式不符合预期');
+    }
+
+    if (analysis.lines.length === 0) {
+      log('❌ 没有解析出任何行', 'error');
+      throw new Error('没有解析出任何歌词行');
+    }
+
+    if (btn) btn.textContent = '正在保存到 GitHub… 80%';
+    const analysisId = `${song.id}_${Date.now()}`;
+    await saveAnalysisToGitHub(song, analysis, analysisId);
+    if (btn) btn.textContent = '保存完成 100%';
+    log(`🎉 解析完成！analysis_id: ${analysisId}`, 'success');
+    toast('解析完成');
+    setTimeout(() => {
+      logWindow.remove();
+      goto(`song/${song.id}`);
+    }, 1000);
+
+  } catch (err) {
+    log(`❌ 错误: ${err.message}`, 'error');
+    toast(`解析失败：${err.message}`);
+    if (btn) { btn.disabled = false; btn.innerHTML = rerun ? '<iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> 用新版本重新解析' : '<iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> 开始AI解析'; }
+  }
+
+  $('#ai-log-window .log-close')?.addEventListener('click', () => logWindow.remove());
 }
 
 function openApiConfigDialog(onSaved) {
