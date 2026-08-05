@@ -447,6 +447,11 @@ function ensureGlobalSettingsButton() {
   const btn = el(`<button id="settings-btn" type="button" style="position:fixed;top:14px;right:14px;z-index:260;border:1.5px solid var(--sakura-soft);border-radius:14px;padding:8px 12px;background:#fff;box-shadow:var(--shadow);cursor:pointer;font-size:13px;color:var(--sakura);font-weight:700;display:inline-flex;align-items:center;gap:6px;"><iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon> GitHub</button>`);
   document.body.appendChild(btn);
   btn.addEventListener('click', openSettingsDialog);
+
+  if ($('#reload-btn')) return;
+  const reloadBtn = el(`<button id="reload-btn" type="button" style="position:fixed;top:14px;right:108px;z-index:260;border:1.5px solid var(--sakura-soft);border-radius:14px;padding:8px 12px;background:#fff;box-shadow:var(--shadow);cursor:pointer;font-size:13px;color:var(--sakura);font-weight:700;display:inline-flex;align-items:center;gap:6px;"><iconify-icon icon="ant-design:reload-outlined" width="14" height="14"></iconify-icon> 刷新</button>`);
+  document.body.appendChild(reloadBtn);
+  reloadBtn.addEventListener('click', () => location.reload());
 }
 
 // ---------- 路由 ----------
