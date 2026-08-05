@@ -1107,6 +1107,9 @@ async function startAiTokenizeAndParse(song) {
     openApiConfigDialog(() => startAiTokenizeAndParse(song));
     return;
   }
+  if (!getGitHubToken()) {
+    toast('⚠️ 未配置 GitHub Token，解析结果将无法保存！请点击右上角设置按钮配置。');
+  }
   const logWindow = await startAiTokenize(song);
 
   const workerBase = getWorkerBase();
