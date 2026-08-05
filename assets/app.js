@@ -24,11 +24,111 @@ function setWorkerBase(url) {
 const state = {
   index: null,          // data/index.json 缓存
   currentSong: null,    // 当前歌曲详情
-  currentAnalysis: null // 当前解析版本
+  currentAnalysis: null, // 当前解析版本
+  lyricsMode: 'kana'    // 歌词显示模式: 'kana' | 'romaji'
 };
 const PENDING_SONG_PREFIX = 'jplearn_pending_song_';
 const VOCABULARY_PATH = './5757词.json';
 let localVocabulary = null;
+
+// ---------- 假名→罗马音转换 (Hepburn) ----------
+const KANA_ROMAJI_MAP = {
+  'あ':'a','い':'i','う':'u','え':'e','お':'o',
+  'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+  'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so',
+  'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+  'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
+  'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+  'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
+  'や':'ya','ゆ':'yu','よ':'yo',
+  'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
+  'わ':'wa','ゐ':'wi','ゑ':'we','を':'wo','ん':'n',
+  'が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go',
+  'ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo',
+  'だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do',
+  'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
+  'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po',
+  'きゃ':'kya','きゅ':'kyu','きょ':'kyo',
+  'しゃ':'sha','しゅ':'shu','しょ':'sho',
+  'ちゃ':'cha','ちゅ':'chu','ちょ':'cho',
+  'にゃ':'nya','にゅ':'nyu','にょ':'nyo',
+  'ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo',
+  'みゃ':'mya','みゅ':'myu','みょ':'myo',
+  'りゃ':'rya','りゅ':'ryu','りょ':'ryo',
+  'ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo',
+  'じゃ':'ja','じゅ':'ju','じょ':'jo',
+  'びゃ':'bya','びゅ':'byu','びょ':'byo',
+  'ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+  'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
+  'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
+  'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
+  'タ':'ta','チ':'chi','ツ':'tsu','テ':'te','ト':'to',
+  'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
+  'ハ':'ha','ヒ':'hi','フ':'fu','ヘ':'he','ホ':'ho',
+  'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
+  'ヤ':'ya','ユ':'yu','ヨ':'yo',
+  'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
+  'ワ':'wa','ヰ':'wi','ヱ':'we','ヲ':'wo','ン':'n',
+  'ガ':'ga','ギ':'gi','グ':'gu','ゲ':'ge','ゴ':'go',
+  'ザ':'za','ジ':'ji','ズ':'zu','ゼ':'ze','ゾ':'zo',
+  'ダ':'da','ヂ':'ji','ヅ':'zu','デ':'de','ド':'do',
+  'バ':'ba','ビ':'bi','ブ':'bu','ベ':'be','ボ':'bo',
+  'パ':'pa','ピ':'pi','プ':'pu','ペ':'pe','ポ':'po',
+  'キャ':'kya','キュ':'kyu','キャ':'kya',
+  'シャ':'sha','シュ':'shu','ショ':'sho',
+  'チャ':'cha','チュ':'chu','チョ':'cho',
+  'ニャ':'nya','ニュ':'nyu','ニョ':'nyo',
+  'ヒャ':'hya','ヒュ':'hyu','ヒョ':'hyo',
+  'ミャ':'mya','ミュ':'myu','ミョ':'myo',
+  'リャ':'rya','リュ':'ryu','リョ':'ryo',
+  'ギャ':'gya','ギュ':'gyu','ギョ':'gyo',
+  'ジャ':'ja','ジュ':'ju','ジョ':'jo',
+  'ビャ':'bya','ビュ':'byu','ビョ':'byo',
+  'ピャ':'pya','ピュ':'pyu','ピョ':'pyo'
+};
+function kanaToRomaji(kana) {
+  if (!kana) return '';
+  let result = '';
+  let i = 0;
+  while (i < kana.length) {
+    const two = kana.substring(i, i + 2);
+    const one = kana.substring(i, i + 1);
+    if (one === 'っ' || one === 'ッ') {
+      // 促音：双写下一个辅音
+      const next = kana.substring(i + 1, i + 3);
+      const nextRomaji = KANA_ROMAJI_MAP[next] || KANA_ROMAJI_MAP[kana.substring(i + 1, i + 2)] || '';
+      if (nextRomaji) result += nextRomaji[0];
+      i += 1;
+      continue;
+    }
+    if (KANA_ROMAJI_MAP[two]) {
+      result += KANA_ROMAJI_MAP[two];
+      i += 2;
+      continue;
+    }
+    if (KANA_ROMAJI_MAP[one]) {
+      let r = KANA_ROMAJI_MAP[one];
+      // ん 后面跟元音或 y 时加撇
+      if ((one === 'ん' || one === 'ン') && i + 1 < kana.length) {
+        const nextOne = kana.substring(i + 1, i + 2);
+        if ('あいうえおやゆよアイウエオヤユヨ'.includes(nextOne)) r = "n'";
+      }
+      result += r;
+      i += 1;
+      continue;
+    }
+    // 长音符号 ー：保留前一个元音
+    if (one === 'ー') {
+      if (result) result += result[result.length - 1];
+      i += 1;
+      continue;
+    }
+    // 非假名字符直接保留
+    result += one;
+    i += 1;
+  }
+  return result;
+}
 
 // ---------- 工具 ----------
 function $(sel, root = document) { return root.querySelector(sel); }
@@ -77,63 +177,14 @@ async function fetchJSON(path) {
   return res.json();
 }
 
-// 预处理：修复 JSON 字符串值内部的未转义双引号
-// 启发式：在字符串内部遇到 " 时，看下一个非空白字符是否为 , } ] :
-// 是则认作字符串结束，否则认作未转义引号并转义为 \"
-function escapeInnerQuotes(text) {
-  let result = '';
-  let i = 0;
-  let inString = false;
-  while (i < text.length) {
-    const ch = text[i];
-    if (inString) {
-      if (ch === '\\') {
-        result += text[i] + (text[i + 1] || '');
-        i += 2;
-        continue;
-      }
-      if (ch === '"') {
-        let j = i + 1;
-        while (j < text.length && (text[j] === ' ' || text[j] === '\t' || text[j] === '\n' || text[j] === '\r')) j++;
-        const nextCh = text[j];
-        if (nextCh === ',' || nextCh === '}' || nextCh === ']' || nextCh === ':') {
-          result += '"';
-          inString = false;
-          i++;
-        } else {
-          result += '\\"';
-          i++;
-        }
-      } else {
-        result += ch;
-        i++;
-      }
-    } else {
-      if (ch === '"') {
-        inString = true;
-        result += '"';
-        i++;
-      } else {
-        result += ch;
-        i++;
-      }
-    }
-  }
-  return result;
-}
-
 function repairBrokenJSON(raw) {
   if (!raw) return null;
   try { return JSON.parse(raw); } catch {}
-
+  
   let cleaned = raw.replace(/```json\s*/g, '').replace(/```/g, '').trim();
-
+  
   try { return JSON.parse(cleaned); } catch {}
-
-  // 预处理：修复字符串值内部的未转义双引号
-  cleaned = escapeInnerQuotes(cleaned);
-  try { return JSON.parse(cleaned); } catch {}
-
+  
   const firstBrace = cleaned.indexOf('{');
   const firstBracket = cleaned.indexOf('[');
   let start = -1;
@@ -147,14 +198,14 @@ function repairBrokenJSON(raw) {
     isArray = false;
   }
   cleaned = cleaned.slice(start);
-
+  
   let result = cleaned;
   let inString = false;
   let escape = false;
   let depth = 0;
   let arrayDepth = 0;
   let lastComplete = -1;
-
+  
   for (let i = 0; i < result.length; i++) {
     const ch = result[i];
     if (escape) { escape = false; continue; }
@@ -169,16 +220,16 @@ function repairBrokenJSON(raw) {
       lastComplete = i;
     }
   }
-
+  
   if (lastComplete > 0) {
     try { return JSON.parse(result.slice(0, lastComplete + 1)); } catch {}
   }
-
+  
   let repaired = result;
   let inStr = false;
   let esc = false;
   let stack = [];
-
+  
   for (let i = 0; i < repaired.length; i++) {
     const ch = repaired[i];
     if (esc) { esc = false; continue; }
@@ -188,9 +239,9 @@ function repairBrokenJSON(raw) {
     if (ch === '{' || ch === '[') stack.push(ch);
     else if (ch === '}' || ch === ']') stack.pop();
   }
-
+  
   if (inStr) repaired += '"';
-
+  
   while (stack.length > 0) {
     const top = stack[stack.length - 1];
     if (top === '{') {
@@ -198,9 +249,6 @@ function repairBrokenJSON(raw) {
       const lastColon = repaired.lastIndexOf(':');
       if (lastComma > lastColon && lastComma === repaired.length - 1) {
         repaired = repaired.slice(0, -1);
-      } else if (lastColon === repaired.length - 1) {
-        // 截断在字段名后的冒号，补 null
-        repaired += 'null';
       }
       repaired += '}';
     } else if (top === '[') {
@@ -208,7 +256,7 @@ function repairBrokenJSON(raw) {
     }
     stack.pop();
   }
-
+  
   try { return JSON.parse(repaired); } catch (e) {
     console.warn('JSON 修复失败:', e.message);
     return null;
@@ -279,7 +327,7 @@ async function validateGitHubToken(token) {
 
 function ensureGlobalSettingsButton() {
   if ($('#settings-btn')) return;
-  const btn = el(`<button id="settings-btn" type="button" style="position:fixed;top:14px;right:14px;z-index:260;border:none;border-radius:999px;padding:8px 12px;background:#fff;box-shadow:0 8px 24px rgba(99,84,124,0.16);cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:6px;"><iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon> GitHub</button>`);
+  const btn = el(`<button id="settings-btn" type="button" style="position:fixed;top:14px;right:14px;z-index:260;border:1.5px solid var(--sakura-soft);border-radius:14px;padding:8px 12px;background:#fff;box-shadow:var(--shadow);cursor:pointer;font-size:13px;color:var(--sakura);font-weight:700;display:inline-flex;align-items:center;gap:6px;"><iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon> GitHub</button>`);
   document.body.appendChild(btn);
   btn.addEventListener('click', openSettingsDialog);
 }
@@ -311,7 +359,7 @@ async function renderHome(query = '') {
   const app = $('#app');
   app.innerHTML = `
     <div class="brand" onclick="goto('')">
-      <img src="./an.jpg" style="width:60px;height:60px;object-fit:cover;border-radius:50%;flex-shrink:0;cursor:pointer;box-shadow:var(--shadow);">
+      <div class="brand-mark"><img src="./an.jpg" alt="logo" style="width:60px;height:60px;object-fit:cover;border-radius:50%;"></div>
       <div class="brand-text">
         <div class="title">日语歌词学习</div>
         <div class="sub">うたの言葉、ひとつずつ</div>
@@ -332,13 +380,6 @@ async function renderHome(query = '') {
   $('#search-input').addEventListener('input', (e) => {
     renderSongList(e.target.value.trim());
   });
-  app.querySelectorAll('.chip').forEach(c => {
-    c.addEventListener('click', () => {
-      $('#search-input').value = c.dataset.q;
-      renderSongList(c.dataset.q);
-    });
-  });
-
   $('#refresh-btn').addEventListener('click', async () => {
     const btn = $('#refresh-btn');
     btn.classList.add('refreshing');
@@ -385,26 +426,25 @@ async function renderSongList(query) {
     songs.forEach(async s => {
       if (!s.analysis_count) {
         try {
-          const analysisDir = await fetch(`${DATA_BASE}/analysis/${s.id}`, { cache: 'no-cache' });
-          if (analysisDir.ok) {
-            const entries = await analysisDir.json();
-            if (entries.length > 0) {
+          const songRes = await fetch(`${DATA_BASE}/songs/${s.id}.json`, { cache: 'no-cache' });
+          if (songRes.ok) {
+            const songData = await songRes.json();
+            const versions = songData.analysis_versions || [];
+            if (versions.length > 0) {
               const metaEl = $(`#meta-${s.id}`);
               if (metaEl) {
-                metaEl.textContent = `已有解析 · ${entries.filter(e => e.name.endsWith('.json')).length / 2}个版本`;
+                metaEl.textContent = `已有解析 · ${versions.length}个版本`;
                 metaEl.classList.remove('empty');
                 metaEl.parentElement.parentElement.classList.remove('no-analysis');
               }
               if (state.index) {
                 const entry = state.index.songs.find(entry => entry.id === s.id);
-                if (entry) {
-                  entry.analysis_count = Math.floor(entries.filter(e => e.name.endsWith('.json')).length / 2);
-                }
+                if (entry) entry.analysis_count = versions.length;
               }
             }
           }
         } catch (err) {
-          console.debug(`检查解析目录失败 ${s.id}:`, err);
+          console.debug(`检查解析状态失败 ${s.id}:`, err);
         }
       }
     });
@@ -465,36 +505,48 @@ async function renderSongDetail(songId) {
         <button class="delete-song-btn" id="delete-song-btn" title="删除歌曲"><iconify-icon icon="ant-design:delete-outlined" width="16" height="16"></iconify-icon></button>
       </div>
     </div>
-    <button class="parse-btn" id="reparse-btn"><iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> 用新版本重新解析</button>
+    <button class="parse-btn" id="reparse-btn" style="width:auto;padding:8px 20px;font-size:12px;border-radius:12px;margin-bottom:14px;margin-left:auto;margin-right:0;"><iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> 用新版本重新解析</button>
+    <div class="lyrics-tabs" id="lyrics-tabs">
+      <button class="lyrics-tab ${state.lyricsMode === 'kana' ? 'active' : ''}" data-mode="kana">かな</button>
+      <button class="lyrics-tab ${state.lyricsMode === 'romaji' ? 'active' : ''}" data-mode="romaji">Romaji</button>
+    </div>
     <div class="song-detail-layout">
       <div class="lyrics-block" id="lyrics-block"></div>
     </div>
   `;
 
-  renderLyricsBlock(analysis, song);
+  renderLyricsBlock(analysis, song, state.lyricsMode);
+  bindLyricsTabs(() => renderLyricsBlock(analysis, song, state.lyricsMode));
 
   $('#reparse-btn').addEventListener('click', () => startParse(song, { rerun: true }));
   $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
-function renderRawLyricsBlock(lines, furiganaLines) {
+function renderRawLyricsBlock(lines, furiganaLines, mode) {
+  mode = mode || 'kana';
   return (lines || []).map((line, idx) => {
     let content = '';
     if (furiganaLines && furiganaLines[idx]) {
-      content = furiganaLines[idx].map(part => {
+      const parts = mode === 'romaji' ? mergeSokuonParts(furiganaLines[idx]) : furiganaLines[idx];
+      content = parts.map(part => {
         if (part.furigana) {
-          return `<ruby><rb>${escapeHtml(part.text)}</rb><rt>${escapeHtml(part.furigana)}</rt></ruby>`;
+          const rt = mode === 'romaji' ? kanaToRomaji(part.furigana) : part.furigana;
+          return `<ruby><rb>${escapeHtml(part.text)}</rb><rt>${escapeHtml(rt)}</rt></ruby>`;
+        }
+        if (mode === 'romaji') {
+          return parseUtatenLyrics(part.text, 'romaji');
         }
         return escapeHtml(part.text);
       }).join('');
     } else {
-      content = parseUtatenLyrics(line);
+      content = parseUtatenLyrics(line, mode);
     }
     return `<div class="lyric-line"><div class="lyric-jp" data-line="${idx}">${content}</div></div>`;
   }).join('');
 }
 
-function parseUtatenLyrics(text) {
+function parseUtatenLyrics(text, mode) {
+  mode = mode || 'kana';
   let result = '';
   let i = 0;
   const kanjiRegex = /[\u4e00-\u9fa5\u3400-\u4dbf]/;
@@ -514,7 +566,8 @@ function parseUtatenLyrics(text) {
         i++;
       }
       if (kanji && kana) {
-        result += `<ruby><rb>${escapeHtml(kanji)}</rb><rt>${escapeHtml(kana)}</rt></ruby>`;
+        const rt = mode === 'romaji' ? kanaToRomaji(kana) : kana;
+        result += `<ruby><rb>${escapeHtml(kanji)}</rb><rt>${escapeHtml(rt)}</rt></ruby>`;
       } else {
         result += escapeHtml(kanji);
       }
@@ -524,7 +577,9 @@ function parseUtatenLyrics(text) {
         kana += text[i];
         i++;
       }
-      result += escapeHtml(kana);
+      result += mode === 'romaji'
+        ? `<ruby><rb>${escapeHtml(kana)}</rb><rt>${escapeHtml(kanaToRomaji(kana))}</rt></ruby>`
+        : escapeHtml(kana);
     } else {
       result += escapeHtml(char);
       i++;
@@ -579,12 +634,25 @@ async function enableLocalVocabularyLookup(song, { showSentenceActions = false }
   }
 }
 
-function renderLyricsBlock(analysis, song) {
+function bindLyricsTabs(rerender) {
+  const tabs = document.querySelectorAll('.lyrics-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.lyricsMode = tab.dataset.mode;
+      rerender();
+    });
+  });
+}
+
+function renderLyricsBlock(analysis, song, mode) {
+  mode = mode || 'kana';
   const block = $('#lyrics-block');
   const furiganaLines = song?.lyrics_with_furigana;
   block.innerHTML = analysis.lines.map((line, idx) => `
     <div class="lyric-line">
-      <div class="lyric-jp" data-line="${idx}">${buildRubyMarkup(line, furiganaLines, idx)}</div>
+      <div class="lyric-jp" data-line="${idx}">${mode === 'romaji' ? buildRomajiMarkup(line, furiganaLines, idx) : buildRubyMarkup(line, furiganaLines, idx)}</div>
       ${line.translation_cn ? `<div class="line-trans">${escapeHtml(line.translation_cn)}</div>` : ''}
       ${line.sentence_id ? `<button type="button" class="line-trans-btn" data-sentence="${line.sentence_id}"><iconify-icon icon="ant-design:link-outlined" width="12" height="12"></iconify-icon> 句子</button>` : ''}
     </div>
@@ -593,6 +661,40 @@ function renderLyricsBlock(analysis, song) {
   block.querySelectorAll('.line-trans-btn').forEach(btn => {
     btn.addEventListener('click', () => showSentence(analysis, btn.dataset.sentence));
   });
+}
+
+// 合并促音部分：っ/ッ 需要和后续假名一起转罗马音（如 っ+さい → ssai）
+function mergeSokuonParts(parts) {
+  const result = [];
+  for (let i = 0; i < parts.length; i++) {
+    let text = parts[i].text;
+    let furigana = parts[i].furigana;
+    let checkStr = furigana || text;
+    while (checkStr && (checkStr.endsWith('っ') || checkStr.endsWith('ッ')) && i + 1 < parts.length) {
+      if (!furigana) furigana = text;
+      i++;
+      text += parts[i].text;
+      furigana += parts[i].furigana || parts[i].text;
+      checkStr = furigana || text;
+    }
+    result.push({ text, furigana });
+  }
+  return result;
+}
+
+// 罗马音模式：用 furigana 数据转罗马音，furigana 为空时用 text 转
+function buildRomajiMarkup(line, furiganaLines, lineIdx) {
+  if (furiganaLines && furiganaLines[lineIdx]) {
+    const parts = mergeSokuonParts(furiganaLines[lineIdx]);
+    return parts.map(part => {
+      if (part.furigana) {
+        const romaji = kanaToRomaji(part.furigana);
+        return `<ruby><rb>${escapeHtml(part.text)}</rb><rt>${escapeHtml(romaji)}</rt></ruby>`;
+      }
+      return parseUtatenLyrics(part.text, 'romaji');
+    }).join('');
+  }
+  return parseUtatenLyrics(line.text || '', 'romaji');
 }
 
 // 把一行歌词的 words[] 转成 <ruby> 标记，助词等无 reading 差异的词直接输出文字
@@ -679,12 +781,19 @@ function renderEmptyState(song) {
         <button class="delete-song-btn" id="delete-song-btn" title="删除歌曲"><iconify-icon icon="ant-design:delete-outlined" width="16" height="16"></iconify-icon></button>
       </div>
     </div>
-    <button class="parse-btn" id="start-parse-btn"><iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> AI 解析（切词+翻译）</button>
+    <button class="parse-btn" id="start-parse-btn" style="width:auto;padding:8px 20px;font-size:12px;border-radius:12px;margin-bottom:14px;margin-left:auto;margin-right:0;"><iconify-icon icon="ant-design:thunderbolt-outlined" width="16" height="16"></iconify-icon> AI 解析（切词+翻译）</button>
+    <div class="lyrics-tabs" id="lyrics-tabs">
+      <button class="lyrics-tab ${state.lyricsMode === 'kana' ? 'active' : ''}" data-mode="kana">かな</button>
+      <button class="lyrics-tab ${state.lyricsMode === 'romaji' ? 'active' : ''}" data-mode="romaji">Romaji</button>
+    </div>
     <div class="song-detail-layout">
-      <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana)}</div>
+      <div class="lyrics-block" id="lyrics-block">${renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana, state.lyricsMode)}</div>
     </div>
   `;
   $('#start-parse-btn').addEventListener('click', () => startAiTokenizeAndParse(song));
+  bindLyricsTabs(() => {
+    $('#lyrics-block').innerHTML = renderRawLyricsBlock(song.lyrics_raw, song.lyrics_with_furigana, state.lyricsMode);
+  });
   $('#delete-song-btn').addEventListener('click', () => deleteSong(song));
 }
 
@@ -736,13 +845,11 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 }
 语法分析 写法要求（严格遵循）：
 参考风格：
-「哀しい」形容词基本形，意为「悲伤的」；「ほど」副助词，表程度，「……到……程度」，修饰后文；「とり憑かれて」动词「とり憑く」被动形连用形，「被附身」；「仕舞いたい」动词「仕舞う」+愿望助动词「たい」，谓语，「想要彻底……」。整句意为「想要悲伤到被彻底附身」。
+「哀しい」形容词基本形，意为"悲伤的"；「ほど」副助词，表程度，"……到……程度"，修饰后文；「とり憑かれて」动词「とり憑く」被动形连用形，"被附身"；「仕舞いたい」动词「仕舞う」+愿望助动词「たい」，谓语，"想要彻底……"。整句意为"想要悲伤到被彻底附身"。
 
 规则：
 1. 每句必须逐词解析：写出单词原形、词性（含活用形）、中文意思
-2. 句末用「整句意为：……」收尾
-3. translation_cn 字段值内严禁出现双引号 " ，所有引用一律使用中文引号「」
-4. 所有字符串值必须保证是合法 JSON（双引号字符串内部不得出现未转义的双引号）
+2.句末用"整句意为：……"收尾
 直接输出JSON，不要其他文字。`;
     
     const controller = new AbortController();
@@ -853,7 +960,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     }
 
     state.currentAnalysis = analysis;
-    renderLyricsBlock(analysis, song);
+    renderLyricsBlock(analysis, song, state.lyricsMode);
     log(`🎉 本地渲染完成`, 'success');
     const isTruncated = finishReason === 'length' || analysis.lines.length < song.lyrics_raw.length;
     if (isTruncated) {
@@ -876,7 +983,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
   return logWindow;
 }
 
-// 执行 AI 解析（前端临时渲染）和保存到 GitHub
+// 执行 AI 解析（前端临时渲染）和调用 Worker 发起完整解析并保存到 GitHub（若已配置）
 async function startAiTokenizeAndParse(song) {
   const cfg = getApiConfig();
   if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
@@ -884,6 +991,13 @@ async function startAiTokenizeAndParse(song) {
     return;
   }
   const logWindow = await startAiTokenize(song);
+
+  const workerBase = getWorkerBase();
+  if (!workerBase) {
+    toast('Worker 地址未配置，已本地显示 AI 解析；若想保存解析，请在设置中填写 Worker 地址。');
+    return;
+  }
+
   if (logWindow) logWindow.remove();
   startParse(song, { rerun: false });
 }
@@ -917,13 +1031,13 @@ function renderImportForm(mode) {
       <div class="field"><label>歌手</label><input id="f-artist" placeholder="例如：初音ミク"></div>
       <div class="field"><label>歌词（每行一句，按原始换行输入）</label><textarea id="f-lyrics" placeholder="夢を探してた
 広げた戒和洋世界"></textarea></div>
-      <button class="parse-btn" id="submit-manual">提交并创建歌词记录</button>
+      <button class="parse-btn" id="submit-manual" style="width:auto;padding:8px 20px;font-size:12px;border-radius:12px;margin-bottom:14px;margin-left:auto;margin-right:auto;">提交并创建歌词记录</button>
     `;
     $('#submit-manual').addEventListener('click', submitManualImport);
   } else {
     slot.innerHTML = `
       <div class="field"><label>Utaten 歌词页链接</label><input id="f-url" placeholder="https://utaten.com/lyric/xxx"></div>
-      <button class="parse-btn" id="submit-utaten">抓取歌词</button>
+      <button class="parse-btn" id="submit-utaten" style="width:auto;padding:8px 20px;font-size:12px;border-radius:12px;margin-bottom:14px;margin-left:auto;margin-right:auto;">抓取歌词</button>
       <div class="empty-sub" style="text-align:left;padding:0 4px;">抓取失败时会提示你改用手动输入</div>
     `;
     $('#submit-utaten').addEventListener('click', submitUtatenImport);
@@ -1245,17 +1359,7 @@ async function saveAnalysisToGitHub(song, analysis, versionId) {
 
 // ---------- AI 解析 ----------
 async function startParse(song, { rerun }) {
-  const cfg = getApiConfig();
-  if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
-    openApiConfigDialog(() => startParse(song, { rerun }));
-    return;
-  }
-  if (!getGitHubToken()) {
-    toast('未配置 GitHub Token，解析结果将无法保存。请先在设置中配置。');
-    openSettingsDialog();
-    return;
-  }
-  (async () => {
+  openApiConfigDialog(async () => {
     const cfg = getApiConfig();
     if (!cfg.apiUrl || !cfg.apiKey || !cfg.model) {
       toast('请填写完整的 API 配置');
@@ -1304,13 +1408,11 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
 }
 语法分析 写法要求（严格遵循）：
 参考风格：
-「哀しい」形容词基本形，意为「悲伤的」；「ほど」副助词，表程度，「……到……程度」，修饰后文；「とり憑かれて」动词「とり憑く」被动形连用形，「被附身」；「仕舞いたい」动词「仕舞う」+愿望助动词「たい」，谓语，「想要彻底……」。整句意为「想要悲伤到被彻底附身」。
+「哀しい」形容词基本形，意为"悲伤的"；「ほど」副助词，表程度，"……到……程度"，修饰后文；「とり憑かれて」动词「とり憑く」被动形连用形，"被附身"；「仕舞いたい」动词「仕舞う」+愿望助动词「たい」，谓语，"想要彻底……"。整句意为"想要悲伤到被彻底附身"。
 
 规则：
 1. 每句必须逐词解析：写出单词原形、词性（含活用形）、中文意思
-2. 句末用「整句意为：……」收尾
-3. translation_cn 字段值内严禁出现双引号 " ，所有引用一律使用中文引号「」
-4. 所有字符串值必须保证是合法 JSON（双引号字符串内部不得出现未转义的双引号）
+2.句末用"整句意为：……"收尾
 直接输出JSON，不要其他文字。`;
 
       const controller = new AbortController();
@@ -1433,7 +1535,7 @@ ${song.lyrics_raw.map((l, i) => `${i}: ${l}`).join('\n')}
     }
 
     $('#ai-log-window .log-close')?.addEventListener('click', () => logWindow.remove());
-  })();
+  });
 }
 
 function openApiConfigDialog(onSaved) {
@@ -1442,12 +1544,12 @@ function openApiConfigDialog(onSaved) {
     <div class="word-pop" style="position:fixed;left:16px;right:16px;bottom:16px;max-width:448px;margin:0 auto;z-index:200;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;">
         <div class="section-label" style="margin-top:0;">配置 AI API（仅保存在本机浏览器）</div>
-        <button type="button" id="cfg-close" aria-label="关闭" style="border:0;background:transparent;color:#8b7fa6;font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;"><iconify-icon icon="ant-design:close-outlined" width="18" height="18"></iconify-icon></button>
+        <button type="button" id="cfg-close" aria-label="关闭" style="border:0;background:transparent;color:var(--ink-soft);font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;"><iconify-icon icon="ant-design:close-outlined" width="18" height="18"></iconify-icon></button>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:8px;">
-        <button type="button" id="preset-openai" style="font-size:11px;padding:4px 8px;border:1px solid #e5e1f0;border-radius:8px;background:#faf8fe;cursor:pointer;color:#6b628a;">OpenAI</button>
-        <button type="button" id="preset-deepseek" style="font-size:11px;padding:4px 8px;border:1px solid #e5e1f0;border-radius:8px;background:#faf8fe;cursor:pointer;color:#6b628a;">DeepSeek</button>
-        <button type="button" id="preset-zhipu" style="font-size:11px;padding:4px 8px;border:1px solid #e5e1f0;border-radius:8px;background:#faf8fe;cursor:pointer;color:#6b628a;">智谱GLM</button>
+        <button type="button" id="preset-openai" style="font-size:11px;padding:4px 8px;border:1px solid var(--sakura-soft);border-radius:8px;background:#fff;cursor:pointer;color:var(--sakura);">OpenAI</button>
+        <button type="button" id="preset-deepseek" style="font-size:11px;padding:4px 8px;border:1px solid var(--sakura-soft);border-radius:8px;background:#fff;cursor:pointer;color:var(--sakura);">DeepSeek</button>
+        <button type="button" id="preset-zhipu" style="font-size:11px;padding:4px 8px;border:1px solid var(--sakura-soft);border-radius:8px;background:#fff;cursor:pointer;color:var(--sakura);">智谱GLM</button>
       </div>
       <div class="field"><label>API 地址</label><input id="cfg-url" value="${escapeHtml(cfg.apiUrl)}" placeholder="https://api.openai.com/v1/chat/completions"></div>
       <div class="field"><label>API Key</label><input id="cfg-key" type="password" value="${escapeHtml(cfg.apiKey)}"></div>
@@ -1455,7 +1557,7 @@ function openApiConfigDialog(onSaved) {
       <div id="cfg-test-result" style="min-height:24px;font-size:12px;color:var(--ink-soft);text-align:center;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;">
         <button class="parse-btn" id="cfg-save">保存并继续</button>
-        <button type="button" id="cfg-test" style="padding:12px 16px;border:2px solid rgba(102,211,192,0.36);border-radius:14px;background:rgba(102,211,192,0.12);color:var(--mint-deep);font-family:'Zen Maru Gothic';font-weight:700;font-size:12.5px;cursor:pointer;">测试连接</button>
+        <button type="button" id="cfg-test" style="padding:12px 16px;border:1.5px solid var(--sakura-soft);border-radius:14px;background:#fff;color:var(--sakura);font-weight:700;font-size:12.5px;cursor:pointer;">测试连接</button>
       </div>
     </div>
   `);
@@ -1601,14 +1703,14 @@ function openSettingsDialog() {
     <div class="word-pop" style="position:fixed;left:16px;right:16px;bottom:16px;max-width:448px;margin:0 auto;z-index:250;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;">
         <div class="section-label" style="margin-top:0;">配置</div>
-        <button type="button" id="settings-close" aria-label="关闭" style="border:0;background:transparent;color:#8b7fa6;font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;"><iconify-icon icon="ant-design:close-outlined" width="18" height="18"></iconify-icon></button>
+        <button type="button" id="settings-close" aria-label="关闭" style="border:0;background:transparent;color:var(--ink-soft);font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;"><iconify-icon icon="ant-design:close-outlined" width="18" height="18"></iconify-icon></button>
       </div>
       <div class="field"><label>Worker 地址</label><input id="settings-worker" value="${escapeHtml(workerBase)}" placeholder="https://jplearn-worker.xxx.workers.dev"></div>
       <div class="field"><label>GitHub Token</label><input id="settings-token" type="password" value="${escapeHtml(token)}" placeholder="ghp_xxx"></div>
       <div class="empty-sub" style="margin-top:-6px;">Worker 地址用于调用导入 / 解析接口；Token 用于写入数据前的鉴权校验。两项都仅保存在本机浏览器。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="parse-btn" id="settings-save">保存并验证</button>
-        <button type="button" id="settings-clear" style="padding:12px 14px;border:none;border-radius:999px;background:#f3eef8;color:#625874;cursor:pointer;">清空</button>
+        <button type="button" id="settings-clear" style="padding:12px 14px;border:1.5px solid var(--sakura-soft);border-radius:14px;background:#fff;color:var(--sakura);cursor:pointer;font-weight:700;">清空</button>
       </div>
     </div>
   `);
