@@ -311,7 +311,7 @@ async function renderHome(query = '') {
   const app = $('#app');
   app.innerHTML = `
     <div class="brand" onclick="goto('')">
-      <div class="brand-mark">歌</div>
+      <img src="./an.jpg" style="width:60px;height:60px;object-fit:cover;border-radius:50%;flex-shrink:0;cursor:pointer;box-shadow:var(--shadow);">
       <div class="brand-text">
         <div class="title">日语歌词学习</div>
         <div class="sub">うたの言葉、ひとつずつ</div>
@@ -321,11 +321,6 @@ async function renderHome(query = '') {
       <iconify-icon icon="ant-design:search-outlined" class="search-icon" width="16" height="16"></iconify-icon>
       <input id="search-input" placeholder="搜索歌曲 / 歌手 / 歌词关键词" value="${escapeHtml(query)}">
       <button id="refresh-btn" class="refresh-btn" type="button" title="刷新歌曲列表"><iconify-icon icon="ant-design:reload-outlined" width="16" height="16"></iconify-icon></button>
-    </div>
-    <div class="search-hint">
-      <span class="chip" data-q="千本樱"><iconify-icon icon="ant-design:flower-outlined" width="12" height="12"></iconify-icon> 千本樱</span>
-      <span class="chip" data-q="打上花火">🍵 打上花火</span>
-      <span class="chip" data-q="lemon">🎐 lemon</span>
     </div>
     <div class="section-label">${query ? '搜索结果' : '全部歌曲'}</div>
     <div id="song-list"></div>
@@ -922,8 +917,6 @@ function renderImportForm(mode) {
       <div class="field"><label>歌手</label><input id="f-artist" placeholder="例如：初音ミク"></div>
       <div class="field"><label>歌词（每行一句，按原始换行输入）</label><textarea id="f-lyrics" placeholder="夢を探してた
 広げた戒和洋世界"></textarea></div>
-      <div class="field"><label>来源（选填）</label><input id="f-source" placeholder="例如：手动输入 / 专辑歌词卡"></div>
-      <div class="field"><label>备注（选填）</label><input id="f-note"></div>
       <button class="parse-btn" id="submit-manual">提交并创建歌词记录</button>
     `;
     $('#submit-manual').addEventListener('click', submitManualImport);
@@ -957,8 +950,8 @@ async function submitManualImport() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title, artist, lyrics_raw: lyricsRaw,
-        source: $('#f-source').value.trim() || 'manual',
-        note: $('#f-note').value.trim(),
+        source: 'manual',
+        note: '',
         github_token: getGitHubToken()
       })
     });
