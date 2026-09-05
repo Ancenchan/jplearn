@@ -420,16 +420,20 @@ function setGitHubToken(token) {
 async function validateGitHubToken(token) {
   const trimmed = (token || '').trim();
   if (!trimmed) return { ok: false, message: '请输入 GitHub Token' };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
     const res = await fetch('https://api.github.com/user', {
       headers: {
         'Authorization': `Bearer ${trimmed}`,
         'Accept': 'application/vnd.github+json',
         'User-Agent': 'jplearn-app'
-      }
+      },
+      signal: controller.signal
     });
     if (!res.ok) {
       const text = await res.text();
+      if (res.status === 401) return { ok: false, message: 'Token 无效（401），请检查是否复制完整' };
       return { ok: false, message: text ? `校验失败：${text}` : '校验失败，请确认 Token 是否有效' };
     }
     const data = await res.json();
@@ -438,7 +442,12 @@ async function validateGitHubToken(token) {
     }
     return { ok: true, login: data.login };
   } catch (err) {
-    return { ok: false, message: `校验失败：${err.message}` };
+    if (err.name === 'AbortError') {
+      return { ok: false, networkError: true, message: '校验超时：无法连接 api.github.com（10秒），请检查网络/代理。' };
+    }
+    return { ok: false, networkError: true, message: `网络错误：${err.message}，无法连接 api.github.com。` };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -452,6 +461,7 @@ function ensureGlobalSettingsButton() {
   const reloadBtn = el(`<button id="reload-btn" type="button" style="position:fixed;top:14px;right:108px;z-index:260;border:1.5px solid var(--sakura-soft);border-radius:14px;padding:8px 12px;background:#fff;box-shadow:var(--shadow);cursor:pointer;font-size:13px;color:var(--sakura);font-weight:700;display:inline-flex;align-items:center;gap:6px;"><iconify-icon icon="ant-design:reload-outlined" width="14" height="14"></iconify-icon> 刷新</button>`);
   document.body.appendChild(reloadBtn);
   reloadBtn.addEventListener('click', () => location.reload());
+  updateGitHubButtonState();
 }
 
 // ---------- 路由 ----------
@@ -1225,6 +1235,34 @@ async function submitUtatenImport() {
   }
 }
 
+// ---------- 设置对话框 ----------
+function updateGitHubButtonState() {
+  const btn = $('#settings-btn');
+  if (!btn) return;
+  const token = getGitHubToken();
+  const worker = getWorkerBase();
+  const dot = token ? '🟢' : '🔴';
+  const tip = token ? 'GitHub Token 已配置' : 'GitHub Token 未配置';
+  btn.innerHTML = `<iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon> GitHub ${dot}`;
+  btn.title = `${tip}${worker ? '，Worker 已配置' : '，Worker 未配置'}`;
+}
+
+async function verifyGitHubToken(token) {
+  const res = await fetch('https://api.github.com/user', {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'jplearn-app'
+    }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `验证失败 (HTTP ${res.status})`);
+  }
+  const user = await res.json();
+  return user.login;
+}
+
 // ---------- 删除歌曲 ----------
 async function deleteSong(song) {
   const token = getGitHubToken();
@@ -1825,8 +1863,7 @@ async function testApiConnection(apiUrl, apiKey, model, resultEl) {
   }
 }
 
-function openSettingsDialog() {
-  const token = getGitHubToken();
+function openSettingsDialog() {  const token = getGitHubToken();
   const workerBase = getWorkerBase();
   const wrap = el(`
     <div class="word-pop" style="position:fixed;left:16px;right:16px;bottom:16px;max-width:448px;margin:0 auto;z-index:250;">
@@ -1850,26 +1887,45 @@ function openSettingsDialog() {
   $('#settings-clear', wrap).addEventListener('click', () => {
     setWorkerBase('');
     setGitHubToken('');
+    updateGitHubButtonState();
     toast('已清空 Worker 地址和 GitHub Token');
     closeDialog();
   });
   $('#settings-save', wrap).addEventListener('click', async () => {
+    const saveBtn = $('#settings-save', wrap);
     const workerValue = $('#settings-worker', wrap).value.trim();
     const tokenValue = $('#settings-token', wrap).value.trim();
-    setWorkerBase(workerValue);
-    if (tokenValue) {
-      const result = await validateGitHubToken(tokenValue);
-      if (!result.ok) {
-        toast(result.message);
-        return;
+    saveBtn.disabled = true;
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = '验证中…';
+    try {
+      setWorkerBase(workerValue);
+      if (tokenValue) {
+        const result = await validateGitHubToken(tokenValue);
+        if (result.ok) {
+          setGitHubToken(tokenValue);
+          toast(`已保存并验证 GitHub Token（${result.login}）`);
+        } else if (result.networkError) {
+          // 网络不通时跳过验证直接保存，避免用户被卡住
+          setGitHubToken(tokenValue);
+          toast(`⚠️ ${result.message} Token 已保存但未验证。`);
+        } else {
+          toast(result.message);
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          return;
+        }
+      } else {
+        setGitHubToken('');
+        toast('已保存 Worker 地址；未填写 GitHub Token');
       }
-      setGitHubToken(tokenValue);
-      toast(`已保存 Worker 地址并验证 GitHub Token（${result.login}）`);
-    } else {
-      setGitHubToken('');
-      toast('已保存 Worker 地址；未填写 GitHub Token');
+      updateGitHubButtonState();
+      closeDialog();
+    } catch (err) {
+      toast(`保存失败：${err.message}`);
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
     }
-    closeDialog();
   });
 }
 
