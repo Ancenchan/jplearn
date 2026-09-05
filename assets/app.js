@@ -453,7 +453,7 @@ async function validateGitHubToken(token) {
 
 function ensureGlobalSettingsButton() {
   if ($('#settings-btn')) return;
-  const btn = el(`<button id="settings-btn" type="button" style="position:fixed;top:14px;right:14px;z-index:260;border:1.5px solid var(--sakura-soft);border-radius:14px;padding:8px 12px;background:#fff;box-shadow:var(--shadow);cursor:pointer;font-size:13px;color:var(--sakura);font-weight:700;display:inline-flex;align-items:center;gap:6px;"><iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon> GitHub</button>`);
+  const btn = el(`<button id="settings-btn" type="button" style="position:fixed;top:14px;right:14px;z-index:260;border:1.5px solid var(--sakura-soft);border-radius:14px;padding:8px 12px;background:#fff;box-shadow:var(--shadow);cursor:pointer;font-size:13px;color:var(--sakura);font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"><iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon><span style="width:6px;height:6px;border-radius:50%;background:#f87171;display:inline-block;flex-shrink:0;"></span></button>`);
   document.body.appendChild(btn);
   btn.addEventListener('click', openSettingsDialog);
 
@@ -1241,9 +1241,10 @@ function updateGitHubButtonState() {
   if (!btn) return;
   const token = getGitHubToken();
   const worker = getWorkerBase();
-  const dot = token ? '🟢' : '🔴';
+  const dotColor = token ? '#4ade80' : '#f87171';
   const tip = token ? 'GitHub Token 已配置' : 'GitHub Token 未配置';
-  btn.innerHTML = `<iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon> GitHub ${dot}`;
+  btn.innerHTML = `<iconify-icon icon="ant-design:setting-outlined" width="14" height="14"></iconify-icon><span style="width:6px;height:6px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0;"></span>`;
+  btn.style.whiteSpace = 'nowrap';
   btn.title = `${tip}${worker ? '，Worker 已配置' : '，Worker 未配置'}`;
 }
 
