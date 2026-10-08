@@ -1,0 +1,789 @@
+{
+  "id": "song829663",
+  "title": "メリュー",
+  "artist": "25時、ナイトコードで。",
+  "aliases": [],
+  "source": "https://utaten.com/lyric/hw24011020/",
+  "note": "Utaten自动导入",
+  "created_at": "2026-10-08T23:57:09.663Z",
+  "lyrics_raw": [
+    "夕陽が落ちる様に胸が染まるので",
+    "耳鳴りのような鼓動を隠して",
+    "バスに乗った僕は言う",
+    "君は灰になって征く",
+    "たとえばこんな言葉さえ",
+    "失う言葉が僕に言えたら",
+    "灯籠の咲く星の海に心臓を投げたのだ",
+    "もう声も出ないそれは",
+    "僕じゃどうしようもなかったのだ",
+    "悲しくもないし苦しくもないのに",
+    "辛いと思うだけ 辛いと思うだけ",
+    "古びたバス停の端傘を持った僕がいる",
+    "今でさえ埃を被った夜空の隅に足はつくのに",
+    "心臓が痛いから死んだふりの毎日を見なよ",
+    "もういっそ死のうと思えたなら",
+    "僕はこうじゃなかったのだ",
+    "どうせ死ぬくせに辛いなんて",
+    "おかしいじゃないか",
+    "どうせ死ぬくせに辛いなんて",
+    "だから愛さえないこんな世界の色に",
+    "僕の唄を混ぜて",
+    "もうどうかしたいと思うくせに",
+    "僕はどうもしないままで",
+    "あぁあ",
+    "灯籠の咲く星の海に心臓を投げたのだ",
+    "もう声も出ないから死んだふりなんて",
+    "どうもなかったのに",
+    "僕もきっとこうで良かったのに",
+    "君がずっと遠く笑ったのだ"
+  ],
+  "lyrics_with_furigana": [
+    [
+      {
+        "text": "          ",
+        "furigana": ""
+      },
+      {
+        "text": "夕陽",
+        "furigana": "ゆうひ"
+      },
+      {
+        "text": "が",
+        "furigana": ""
+      },
+      {
+        "text": "落",
+        "furigana": "お"
+      },
+      {
+        "text": "ちる",
+        "furigana": ""
+      },
+      {
+        "text": "様",
+        "furigana": "よう"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      },
+      {
+        "text": "胸",
+        "furigana": "むね"
+      },
+      {
+        "text": "が",
+        "furigana": ""
+      },
+      {
+        "text": "染",
+        "furigana": "そ"
+      },
+      {
+        "text": "まるので",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "耳鳴",
+        "furigana": "みみな"
+      },
+      {
+        "text": "りのような",
+        "furigana": ""
+      },
+      {
+        "text": "鼓動",
+        "furigana": "こどう"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "隠",
+        "furigana": "かく"
+      },
+      {
+        "text": "して",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "バスに",
+        "furigana": ""
+      },
+      {
+        "text": "乗",
+        "furigana": "の"
+      },
+      {
+        "text": "った",
+        "furigana": ""
+      },
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "は",
+        "furigana": ""
+      },
+      {
+        "text": "言",
+        "furigana": "い"
+      },
+      {
+        "text": "う",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "君",
+        "furigana": "きみ"
+      },
+      {
+        "text": "は",
+        "furigana": ""
+      },
+      {
+        "text": "灰",
+        "furigana": "はい"
+      },
+      {
+        "text": "になって",
+        "furigana": ""
+      },
+      {
+        "text": "征",
+        "furigana": "い"
+      },
+      {
+        "text": "く",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "たとえばこんな",
+        "furigana": ""
+      },
+      {
+        "text": "言葉",
+        "furigana": "ことば"
+      },
+      {
+        "text": "さえ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "失",
+        "furigana": "うしな"
+      },
+      {
+        "text": "う",
+        "furigana": ""
+      },
+      {
+        "text": "言葉",
+        "furigana": "ことば"
+      },
+      {
+        "text": "が",
+        "furigana": ""
+      },
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      },
+      {
+        "text": "言",
+        "furigana": "い"
+      },
+      {
+        "text": "えたら",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "灯籠",
+        "furigana": "とうろう"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "咲",
+        "furigana": "さ"
+      },
+      {
+        "text": "く",
+        "furigana": ""
+      },
+      {
+        "text": "星",
+        "furigana": "ほし"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "海",
+        "furigana": "うみ"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      },
+      {
+        "text": "心臓",
+        "furigana": "しんぞう"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "投",
+        "furigana": "な"
+      },
+      {
+        "text": "げたのだ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "もう",
+        "furigana": ""
+      },
+      {
+        "text": "声",
+        "furigana": "こえ"
+      },
+      {
+        "text": "も",
+        "furigana": ""
+      },
+      {
+        "text": "出",
+        "furigana": "で"
+      },
+      {
+        "text": "ないそれは",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "じゃどうしようもなかったのだ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "悲",
+        "furigana": "かな"
+      },
+      {
+        "text": "しくもないし",
+        "furigana": ""
+      },
+      {
+        "text": "苦",
+        "furigana": "くる"
+      },
+      {
+        "text": "しくもないのに",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "辛",
+        "furigana": "つら"
+      },
+      {
+        "text": "いと",
+        "furigana": ""
+      },
+      {
+        "text": "思",
+        "furigana": "おも"
+      },
+      {
+        "text": "うだけ ",
+        "furigana": ""
+      },
+      {
+        "text": "辛",
+        "furigana": "つら"
+      },
+      {
+        "text": "いと",
+        "furigana": ""
+      },
+      {
+        "text": "思",
+        "furigana": "おも"
+      },
+      {
+        "text": "うだけ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "古",
+        "furigana": "ふる"
+      },
+      {
+        "text": "びたバス",
+        "furigana": ""
+      },
+      {
+        "text": "停",
+        "furigana": "てい"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "端",
+        "furigana": "はし"
+      },
+      {
+        "text": "傘",
+        "furigana": "かさ"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "持",
+        "furigana": "も"
+      },
+      {
+        "text": "った",
+        "furigana": ""
+      },
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "がいる",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "今",
+        "furigana": "いま"
+      },
+      {
+        "text": "でさえ",
+        "furigana": ""
+      },
+      {
+        "text": "埃",
+        "furigana": "ほこり"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "被",
+        "furigana": "こうむ"
+      },
+      {
+        "text": "った",
+        "furigana": ""
+      },
+      {
+        "text": "夜空",
+        "furigana": "よぞら"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "隅",
+        "furigana": "すみ"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      },
+      {
+        "text": "足",
+        "furigana": "あし"
+      },
+      {
+        "text": "はつくのに",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "心臓",
+        "furigana": "しんぞう"
+      },
+      {
+        "text": "が",
+        "furigana": ""
+      },
+      {
+        "text": "痛",
+        "furigana": "いた"
+      },
+      {
+        "text": "いから",
+        "furigana": ""
+      },
+      {
+        "text": "死",
+        "furigana": "し"
+      },
+      {
+        "text": "んだふりの",
+        "furigana": ""
+      },
+      {
+        "text": "毎日",
+        "furigana": "まいにち"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "見",
+        "furigana": "み"
+      },
+      {
+        "text": "なよ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "もういっそ",
+        "furigana": ""
+      },
+      {
+        "text": "死",
+        "furigana": "し"
+      },
+      {
+        "text": "のうと",
+        "furigana": ""
+      },
+      {
+        "text": "思",
+        "furigana": "おも"
+      },
+      {
+        "text": "えたなら",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "はこうじゃなかったのだ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "どうせ",
+        "furigana": ""
+      },
+      {
+        "text": "死",
+        "furigana": "し"
+      },
+      {
+        "text": "ぬくせに",
+        "furigana": ""
+      },
+      {
+        "text": "辛",
+        "furigana": "つら"
+      },
+      {
+        "text": "いなんて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "おかしいじゃないか",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "どうせ",
+        "furigana": ""
+      },
+      {
+        "text": "死",
+        "furigana": "し"
+      },
+      {
+        "text": "ぬくせに",
+        "furigana": ""
+      },
+      {
+        "text": "辛",
+        "furigana": "つら"
+      },
+      {
+        "text": "いなんて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "だから",
+        "furigana": ""
+      },
+      {
+        "text": "愛",
+        "furigana": "あい"
+      },
+      {
+        "text": "さえないこんな",
+        "furigana": ""
+      },
+      {
+        "text": "世界",
+        "furigana": "せかい"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "色",
+        "furigana": "いろ"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "唄",
+        "furigana": "うた"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "混",
+        "furigana": "ま"
+      },
+      {
+        "text": "ぜて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "もうどうかしたいと",
+        "furigana": ""
+      },
+      {
+        "text": "思",
+        "furigana": "おも"
+      },
+      {
+        "text": "うくせに",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "はどうもしないままで",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "あぁあ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "灯籠",
+        "furigana": "とうろう"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "咲",
+        "furigana": "さ"
+      },
+      {
+        "text": "く",
+        "furigana": ""
+      },
+      {
+        "text": "星",
+        "furigana": "ほし"
+      },
+      {
+        "text": "の",
+        "furigana": ""
+      },
+      {
+        "text": "海",
+        "furigana": "うみ"
+      },
+      {
+        "text": "に",
+        "furigana": ""
+      },
+      {
+        "text": "心臓",
+        "furigana": "しんぞう"
+      },
+      {
+        "text": "を",
+        "furigana": ""
+      },
+      {
+        "text": "投",
+        "furigana": "な"
+      },
+      {
+        "text": "げたのだ",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "もう",
+        "furigana": ""
+      },
+      {
+        "text": "声",
+        "furigana": "こえ"
+      },
+      {
+        "text": "も",
+        "furigana": ""
+      },
+      {
+        "text": "出",
+        "furigana": "で"
+      },
+      {
+        "text": "ないから",
+        "furigana": ""
+      },
+      {
+        "text": "死",
+        "furigana": "し"
+      },
+      {
+        "text": "んだふりなんて",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "どうもなかったのに",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "僕",
+        "furigana": "ぼく"
+      },
+      {
+        "text": "もきっとこうで",
+        "furigana": ""
+      },
+      {
+        "text": "良",
+        "furigana": "よ"
+      },
+      {
+        "text": "かったのに",
+        "furigana": ""
+      }
+    ],
+    [
+      {
+        "text": "君",
+        "furigana": "きみ"
+      },
+      {
+        "text": "がずっと",
+        "furigana": ""
+      },
+      {
+        "text": "遠",
+        "furigana": "とお"
+      },
+      {
+        "text": "く",
+        "furigana": ""
+      },
+      {
+        "text": "笑",
+        "furigana": "わら"
+      },
+      {
+        "text": "ったのだ",
+        "furigana": ""
+      }
+    ]
+  ],
+  "analysis_versions": []
+}
